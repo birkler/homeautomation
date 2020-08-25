@@ -1,0 +1,7 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP OLIMEX_ESP32_POE_ISO
+K ESP32, WROOM, POE
+$ENDCMP
+#
+#End Doc Library

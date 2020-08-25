@@ -1,0 +1,158 @@
+# pip3 install esphome
+# Use esp32-poe-iso
+#
+
+#
+# CT = Current Transformer
+#                          +-------------------+
+#                          |    ETHERNET       |
+#                          |                   |
+#                          |                   |
+#                          |                   |
+#                          | GPIO13     GPIO5  |
+#                          | GPIO14     GPIO4  |
+#                          | GPIO15     GPIO3  |
+#                          | GPIO16     GPIO2  |
+#                          | GPIO32     GPIO1  |
+#                          | GPIO33     GPIO0  |
+#                          | GPIO34    ESP_EN  |
+#                          | GPIO35       GND  |
+#                          | GPIO36       3V3  |
+#                          | GPIO39        5V  |
+#                          |                   |
+#                          |                   |
+#                          |                   |
+#                          |                   |
+#                          |    ANTENNA        |
+#                          +-------------------+
+#
+#  3V3 ----[220]---+-----[220]------GND
+#                  |
+#                  +-----|[-10u----GND
+#                  |
+#                  +-- 1V6 -- CT_COMMON
+#
+# CT1 ---[220]----CT_COMMON
+# CT2 ---[220]----CT_COMMON
+#
+#  (x1) CT1           
+#  (x2) CT2                          
+#  (x3) CT_COMMON                           
+#  (x4)                              
+#  (x5) REED1                         
+#  (x6) REED2                          
+#  (x7) REED3
+#  (x8) GND         
+# https://learn.openenergymonitor.org/electricity-monitoring/ct-sensors/yhdc-sct-013-000-ct-sensor-report                
+
+esphome:
+  name: garage_monitor
+  platform: ESP32
+  board: esp32-poe-iso
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+sensor:
+  - platform: ct_clamp
+    id: adc_sensor_ct1
+    sensor: adc_sensor_raw_ct1
+    name: "Measured Current Washer"
+    unit_of_measurement: "A"
+    accuracy_decimals: 0
+    update_interval: 15s
+    filters:
+      - calibrate_linear:
+          # Measured value of 0 maps to 0A
+          - 0 -> 0
+          - 0.78 -> 9.6
+  
+  - platform: ct_clamp
+    id: adc_sensor_ct2
+    sensor: adc_sensor_raw_ct2
+    name: "Measured Current Dryer"
+    unit_of_measurement: "A"
+    accuracy_decimals: 0
+    update_interval: 15s
+    filters:
+      - calibrate_linear:
+          # Measured value of 0 maps to 0A
+          - 0 -> 0
+          - 0.78 -> 9.6
+
+
+
+  # Example source sensor
+  - platform: adc
+
+    pin: 35
+    id: adc_sensor_raw_ct1
+    attenuation: 6dB
+    internal: True
+
+  # Example source sensor
+  - platform: adc
+    pin: 36
+    id: adc_sensor_raw_ct2
+    attenuation: 6dB
+    internal: True
+
+
+binary_sensor:
+  - platform: gpio
+    name: "Garage Exterior Door"
+    device_class: Door
+    pin:
+      number: 5
+      inverted: True
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    name: "Garage Gate"
+    device_class: Door
+    pin:
+      number: 4
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    name: "Garage Interior Door"
+    device_class: Door
+    pin:
+      number: 3
+      mode: INPUT_PULLUP
+
+  - platform: template
+    name: "Dryer"
+#    icon: mdi-tumble-dryer
+#    device_class: power
+    lambda: |-
+      if (id(adc_sensor_ct1).state > 2.0f) {
+        return true;
+      } else {
+        return false;
+      }
+
+  - platform: template
+    name: "Washer"
+#    device_class: power
+#    icon: mdi-washing-machine
+    lambda: |-
+      if (id(adc_sensor_ct1).state > 2.0f) {
+        return true;
+      } else {
+        return false;
+      }

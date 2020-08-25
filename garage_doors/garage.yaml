@@ -1,0 +1,217 @@
+ # Use esp32-poe-iso
+# pip3 install esphome
+# Use esp32-poe-iso
+#
+#  (x1) SW1                                                   +-------------------+
+#  (x2) REED1_OPENED       -----[47K]----- GPI35                     |     ANTENNA       |
+#  (x3) SAFETY1      -----[4K7]----- GPIO2                     |                   |
+#  (x4) REED1_CLOSED      -----[4K7]----- GPIO3                      |                   |
+#  (x5)                                                       |                   |
+#  (x6)                                                      o| 5V          GPI9  |o    
+#  (x7)                                                      o| 3V3        GPI36  |o    
+#  (x8) GND                                             GND -o| GND        GPI35  |o    
+#                      +-ILQ620-+                            o| ESP_EN     GPI34  |o    
+#  GPIO4 ----[220] ----| 1    16| ---- SW1                   o| GPIO0     GPIO33  |o    
+#  GND ----------------| 2    15| ---- GND                   o| GPIO1     GPIO32  |o                
+#  SAFETY1 --[3K3] --- | 3    14| -----GPIO5                 o| GPIO2     GPIO16  |o    
+#    GND----|LED<|---- | 4    13| -----GND                   o| GPIO3     GPIO15  |o    
+#  SAFETY2----[2K2]--- | 5    12| ----- GPIO15               o| GPIO4     GPIO14  |o    
+#  SAFETY2_GND  ------ | 6    11| -----GND                   o| GPIO5     GPIO13  |o   
+#  (GPIO16)--[220]-----| 7    10| ----- SW2                   |                   |
+#  GND ----------------| 8     9| ------SW2_GND               |                   |
+#                      +--------+                             |                   |
+#                                                             |                   |
+#                                                             |    ETHERNET       |
+#                                                             +-------------------+
+#  (x1) -----SW2_GND
+#  (x2) -----SW2
+#  (x3) SAFETY2 ---------[2K2]----
+#  (x4) SAFETY2_GND
+#  (x5) 
+#  (x6) REED2_OPENED ---- GPIO14
+#  (x7) REED2_CLOSED ---- GPIO13
+#  (x8) ---- GND
+
+# How safety sensor work; TDLR: receiver puts a pulsetrain on the supply by shorting to ground
+# https://pages.mtu.edu/~suits/electronics/GarageElecEye.html
+
+
+# How safety sensor work; TDLR: receiver puts a pulsetrain on the supply by shorting to ground
+# https://pages.mtu.edu/~suits/electronics/GarageElecEye.html
+
+
+esphome:
+  name: garage_door_1
+  platform: ESP32
+  board: esp32-poe-iso
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+
+switch:
+  - platform: gpio
+    internal: true
+    pin: 4
+    id: garage_door1_solid_state_relay
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    internal: true
+    pin: 16
+    id: garage_door2_solid_state_relay
+    restore_mode: ALWAYS_OFF
+
+
+
+binary_sensor:
+  - platform: gpio
+    name: "Garage Door 1 ESP button"
+    pin:
+      number: 34
+      inverted: True
+      mode: INPUT_PULLUP
+  - platform: gpio
+    pin:
+      number: 5
+      mode: INPUT_PULLUP
+    id: garage_safety1
+    name: Garage Safety Beam (Single)
+    device_class: safety
+    #safety: on means unsafe, off means safe
+    filters:
+      - delayed_on: 20ms
+     #Theory: if the beam is uninterrupted (safe) we will get a zero every ~6ms
+     #If we dont get a pulse within 20ms binary sensor will turn on (unsafe!)
+      
+  - platform: gpio
+    id: garage_door1_state_up
+    name: Garage Door 1 Up
+    pin: 
+      number: 35
+      inverted: True
+      mode: INPUT_PULLUP
+
+    internal: true
+
+  - platform: gpio
+    id: garage_door1_state_down
+    name: Garage Door 1 Down
+    pin: 
+      number: 3
+      inverted: True
+      mode: INPUT_PULLUP
+    internal: true
+
+  - platform: gpio
+    pin:
+      number: 15
+      mode: INPUT_PULLUP
+    id: garage_safety2
+    name: Garage Safety Beam (Twin)
+    device_class: safety
+    #safety: on means unsafe, off means safe
+    filters:
+      - delayed_on: 50ms
+     #Theory: if the beam is uninterrupted (safe) we will get a zero every ~6ms
+     #If we dont get a pulse within 20ms binary sensor will turn on (unsafe!)
+      
+  - platform: gpio
+    id: garage_door2_state_up
+    name: Garage Door 1 Up
+
+    pin: 
+      number: 13
+      inverted: True
+      mode: INPUT_PULLUP
+    internal: true
+    filters:
+      delayed_on_off: 50ms
+
+  - platform: gpio
+    id: garage_door2_state_down
+    name: Garage Door 1 Down
+    pin: 
+      number: 14
+      mode: INPUT_PULLUP
+      inverted: True
+    internal: true
+    filters:
+      delayed_on_off: 50ms
+
+
+
+
+
+#inspiration:
+#https://github.com/johnboiles/homeassistant-config/blob/master/esphome/garage_door.yaml
+#
+
+cover:
+  - platform: template
+    device_class: garage
+    id: garage_door1
+    name: "Garage Door (Single)"
+    lambda: |-
+      if (id(garage_door1_state_down).state) {
+        return cover::COVER_CLOSED;
+      } else if (id(garage_door1_state_up).state) {
+        return cover::COVER_OPEN;
+      } else {
+        return cover::COVER_OPEN;
+      }
+    open_action:
+      - switch.turn_on: garage_door1_solid_state_relay
+      - delay: 1s
+      - switch.turn_off: garage_door1_solid_state_relay
+    close_action:
+      - switch.turn_on: garage_door1_solid_state_relay
+      - delay: 1s
+      - switch.turn_off: garage_door1_solid_state_relay
+    stop_action:
+      - switch.turn_on: garage_door1_solid_state_relay
+      - delay: 1s
+      - switch.turn_off: garage_door1_solid_state_relay
+  
+  
+  - platform: template
+    device_class: garage
+    id: garage_door2
+    name: "Garage Door (Twin)"
+    lambda: |-
+      if (id(garage_door2_state_down).state) {
+        return cover::COVER_CLOSED;
+      } else if (id(garage_door2_state_up).state) {
+        return cover::COVER_OPEN;
+      } else {
+        return cover::COVER_OPEN;
+      }
+    open_action:
+      - switch.turn_on: garage_door2_solid_state_relay
+      - delay: 1s
+      - switch.turn_off: garage_door2_solid_state_relay
+    close_action:
+      - switch.turn_on: garage_door2_solid_state_relay
+      - delay: 1s
+      - switch.turn_off: garage_door2_solid_state_relay
+    stop_action:
+      - switch.turn_on: garage_door2_solid_state_relay
+      - delay: 1s
+      - switch.turn_off: garage_door2_solid_state_relay
+
+
+
