@@ -153,6 +153,14 @@ binary_sensor:
     filters:
       delayed_on_off: 50ms
 
+  - platform: template
+    name: "Garage Doors"
+    lambda: |-
+      if (id(garage_door1_state_down).state && id(garage_door2_state_down).state ) {
+        return false;
+      } else {
+        return true;
+      }
 
 
 

@@ -26,19 +26,26 @@
 #                          |    ANTENNA        |
 #                          +-------------------+
 #
+# TIP:create one common reference for each transformer
+# sharing one common reference caused crosstalk and incorrect readings
+#
 #  3V3 ----[220]---+-----[220]------GND
 #                  |
 #                  +-----|[-10u----GND
 #                  |
-#                  +-- 1V6 -- CT_COMMON
+#                  +-- 1V6 -- CT2_COMMON
 #
-# CT1 ---[220]----CT_COMMON
-# CT2 ---[220]----CT_COMMON
+#  3V3 ----[100]---+-----[100]------GND
+#                  |
+#                  +-- 1V6 -- CT1_COMMON
+#
+# CT1 ---[220]----CT1_COMMON
+# CT2 ---[220]----CT2_COMMON
 #
 #  (x1) CT1           
 #  (x2) CT2                          
-#  (x3) CT_COMMON                           
-#  (x4)                              
+#  (x3) CT2_COMMON                           
+#  (x4) CT1_COMMON                           
 #  (x5) REED1                         
 #  (x6) REED2                          
 #  (x7) REED3
@@ -118,7 +125,6 @@ binary_sensor:
     device_class: Door
     pin:
       number: 5
-      inverted: True
       mode: INPUT_PULLUP
 
   - platform: gpio
@@ -135,12 +141,14 @@ binary_sensor:
       number: 3
       mode: INPUT_PULLUP
 
+
+
   - platform: template
     name: "Dryer"
 #    icon: mdi-tumble-dryer
 #    device_class: power
     lambda: |-
-      if (id(adc_sensor_ct1).state > 2.0f) {
+      if (id(adc_sensor_ct2).state > 5.0f) {
         return true;
       } else {
         return false;
