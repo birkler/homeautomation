@@ -4,36 +4,51 @@
 
 
 ### Philosophy
-- All function should work like "dumb" devices
+- All functions should work like "dumb" devices
 - All home automation should work without internet connection
-- Avoid WiFi
+- Prefer hardwired
 
 
 ### Router:
 Port forward ext:443->int:8123
-Static IP for Raspberry ETH MAC
+Static IPs for hardwired Raspberry ETH MAC
+
 
 
 ### Device Tree
 ```
-- ETHERNET
-    - WIFI
-        - Amazon ECHO
-    - Raspbery Pi
-        - ZWave (Zoos USB)
-            - Honeywell Thermostat
-            - Lights
-            - Lights dimmable
-            - Lights with occupancy sensor
-    - ESPHome Garage Doors
-        - Cover Twin
-        - Cover Single
-    - ESPHome Garage Monitor
-        - Dryer Current
-        - Washer Current
-        - Garage Doors: Exterior, Interior, Exterior Gateway
-    - Pentair Pool Ethenet gateway
-        - ZigBee
+- HomeAssistant 
+    - ZWave (Zoos USB)
+        - Honeywell Thermostat
+        - Lights
+        - Lights dimmable
+        - Lights with occupancy sensor
+    - ETHERNET
+        - Self - Raspbery Pi 4 (POE)
+        - Unifi Gateway+24Port POE switch
+        - WIFI
+            - Amazon ECHO
+            - Ring Doorbell
+            - ChromeCasts
+        - ESPHome Garage Doors  (POE)
+            - Cover Twin
+            - Cover Single
+        - ESPHome Garage Monitor  (POE)
+            - Dryer Current
+            - Washer Current
+            - Garage Doors: Exterior, Interior, Exterior Gateway
+        - Pentair Pool Ethenet gateway  (POE)
             - ZigBee
                 - Pentair Pool controller
-```
+        - Rainforest Energy Gateway (POE)
+            - Zigbee
+                - SDG&E Electrical Meter
+        - SolarEdge Gateway  (POE)
+            - Zigbee
+                - SolarEdge Inverter
+        - SolarEdge Inverter
+        - TV 1
+        - TV 2
+        - ChromeCast1
+        
+``` 
