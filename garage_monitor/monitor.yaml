@@ -178,16 +178,22 @@ binary_sensor:
         - switch.turn_off: washer_finished_switch
     on_release:
       then:
-        - switch.turn_on: washer_finished_switch
-        - script.execute: washer_finished_timeout_script
+        - script.execute: washer_maybe_finished_script
 
 
 script:
+  - id: washer_maybe_finished_script
+    mode: restart    
+    then:
+      - delay: 5 min
+      - switch.turn_on: washer_finished_switch
+      - script.execute: washer_finished_timeout_script
   - id: washer_finished_timeout_script
     mode: restart     # Washer finished will be on for max N minutes 
     then:
       - delay: 240 min
       - switch.turn_off: washer_finished_switch
+
 
 
 globals:
