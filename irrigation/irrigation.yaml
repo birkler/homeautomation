@@ -3,5 +3,630 @@
 # https://community.home-assistant.io/t/my-garden-irrigation/99686
 
 
-https://github.com/esphome/esphome/issues/25
+#https://github.com/esphome/esphome/issues/25
+
+
+#
+#                       3V3 (1) o | 
+#                       GND (2) o | 
+#                    ESP_EN (3) o | 
+#                     GPIO5 (4) o |  [Reserved ETH]
+#                     GPIO2 (5) o | SDA
+#                     GPIO4 (6) o | SCL
+#    RELAY_1         GPIO12 (7) o | 
+#    RELAY_2         GPIO13 (8) o | 
+#    RELAY_3         GPIO14 (9) o | 
+#    RELAY_4         GPIO15(10) o | 
+#    RELAY_5         GPIO16(11) o | 
+#                    GPIO17(12) o |  [Reserved ETH]
+#    RELAY_6         GPIO32(13) o | 
+#                    GPIO33(14) o |  [Reserved Status LED]
+#                     GPI34(15) o |  [User Button]
+#                     GPI35(16) o |  
+#                     GPI36(17) o | 
+#                     GPI39(18) o | 
+#                       GND(19) o | --------------+
+#                     5Vext(20) o | -----------+  |            
+#                       GND(19) o | -----------|--+-------POWER_GND
+#   LCD_GND             GND(19) o |            |
+#   RELAY_GND           GND(19) o |            |
+#                     5Vext(20) o | -----------+----------POWER_VCC
+#   RELAY_VCC         5Vext(20) o | 
+#   LCD_VCC           5Vext(20) o | 
+
+
+
+
+
+
+
+esphome:
+  name: irrigation_controller
+  platform: ESP32
+  board: esp32-gateway
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+i2c:
+  sda: 2
+  scl: 4
+  scan: True
+  id: bus_a
+
+#isplay:
+#  - platform: lcd_gpio
+#    dimensions: 18x2
+#    data_pins:
+#      - GPIO12
+#      - GPIO13
+#      - GPIO14
+#      - GPIO15
+#    enable_pin: GPIO16
+#    rs_pin: GPIO32
+#    lambda: |-
+#      it.print("Hello World!");
+
+
+#  GPIO12 (7) o | RELAY_1
+#  GPIO13 (8) o | RELAY_2
+#  GPIO14 (9) o | RELAY_3
+#  GPIO15(10) o | RELAY_4
+#  GPIO16(11) o | RELAY_5
+
+
+
+globals:
+   - id: global_monday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+   - id: global_tuesday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+   - id: global_wednesday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+   - id: global_thursday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+   - id: global_friday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+   - id: global_saturday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+   - id: global_sunday_active
+     type: int
+     restore_value: yes
+     initial_value: '0'
+
+   - id: global_zone1_duration
+     type: int
+     restore_value: yes
+     initial_value: '1'
+
+   - id: global_zone2_duration
+     type: int
+     restore_value: yes
+     initial_value: '1'
+
+   - id: global_zone3_duration
+     type: int
+     restore_value: yes
+     initial_value: '1'
+
+   - id: global_zone4_duration
+     type: int
+     restore_value: yes
+     initial_value: '1'
+
+   - id: global_zone5_duration
+     type: int
+     restore_value: yes
+     initial_value: '1'
+
+   - id: global_zone6_duration
+     type: int
+     restore_value: yes
+     initial_value: '1'
+
+   - id: global_zone1_duration_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+   - id: global_zone2_duration_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+   - id: global_zone3_duration_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+   - id: global_zone4_duration_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+   - id: global_zone5_duration_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+   - id: global_zone6_duration_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+   - id: global_start_hour
+     type: int
+     restore_value: yes
+     initial_value: '20'
+
+   - id: global_start_hour_prev
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+
+
+
+sensor:
+  - platform: template
+    name: "Zone 1"
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(global_zone1_duration) != id(global_zone1_duration)) {
+        id(global_zone1_duration_prev) = id(global_zone1_duration);
+        return id(global_zone1_duration);
+      } else {
+        return {};
+      }
+    update_interval: 250ms
+  - platform: template
+    name: "Zone 2"
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(global_zone2_duration) != id(global_zone2_duration)) {
+        id(global_zone2_duration_prev) = id(global_zone2_duration);
+        return id(global_zone2_duration);
+      } else {
+        return {};
+      }
+    update_interval: 250ms
+  - platform: template
+    name: "Zone 3"
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(global_zone3_duration) != id(global_zone3_duration)) {
+        id(global_zone3_duration_prev) = id(global_zone3_duration);
+        return id(global_zone3_duration);
+      } else {
+        return {};
+      }
+    update_interval: 250ms
+  - platform: template
+    name: "Zone 4"
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(global_zone4_duration) != id(global_zone4_duration)) {
+        id(global_zone4_duration_prev) = id(global_zone4_duration);
+        return id(global_zone4_duration);
+      } else {
+        return {};
+      }
+    update_interval: 250ms
+  - platform: template
+    name: "Zone 5"
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(global_zone5_duration) != id(global_zone5_duration)) {
+        id(global_zone5_duration_prev) = id(global_zone5_duration);
+        return id(global_zone5_duration);
+      } else {
+        return {};
+      }
+    update_interval: 250ms
+  - platform: template
+    name: "Zone 6"
+    icon: mdi:timer-outline
+    unit_of_measurement: min
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(global_zone6_duration) != id(global_zone6_duration)) {
+        id(global_zone6_duration_prev) = id(global_zone6_duration);
+        return id(global_zone6_duration);
+      } else {
+        return {};
+      }
+
+
+    update_interval: 250ms
+
+
+
+text_sensor:
+  - platform: template
+    name: "Start Time"
+    icon: mdi:clock-outline
+    lambda: |-
+      if (id(global_start_hour_prev) != id(global_start_hour)) {
+        id(global_start_hour_prev) = id(global_start_hour);
+        char temp[1000];
+        int val = id(global_start_hour);
+        sprintf(temp,"%02d:00", val);
+        std::string str = temp;
+        return {str};
+      } else {
+        return {};
+      }
+    update_interval: 250ms
+
+
+
+switch:
+  - platform: gpio
+    pin: GPIO12
+    name: "Valve Zone 1"
+    id: relay_valve_zone1
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: &interlock_group [relay_valve_zone1, relay_valve_zone2,relay_valve_zone3,relay_valve_zone4,relay_valve_zone5,relay_valve_zone6]
+    interlock_wait_time: 2s
+
+  - platform: gpio
+    pin: GPIO13
+    name: "Valve Zone 2"
+    id: relay_valve_zone2
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+
+  - platform: gpio
+    pin: GPIO14
+    name: "Valve Zone 3"
+    id: relay_valve_zone3
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+
+  - platform: gpio
+    pin: GPIO15
+    name: "Valve Zone 4"
+    id: relay_valve_zone4
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+
+  - platform: gpio
+    pin: GPIO16
+    name: "Valve Zone 5"
+    id: relay_valve_zone5
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+
+  - platform: gpio
+    pin: GPIO32
+    name: "Valve Zone 6"
+    id: relay_valve_zone6
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+
+  - platform: template
+    id: irrigation_monday_active
+    name: "Monday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_monday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_monday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_monday_active) = 0;
+
+
+  - platform: template
+    id: irrigation_tuesday_active
+    name: "Tuesday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_tuesday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_tuesday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_tuesday_active) = 0;
+
+
+  - platform: template
+    id: irrigation_wednesday_active
+    name: "Wednesday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_wednesday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_wednesday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_wednesday_active) = 0;
+
+  - platform: template
+    id: irrigation_thursday_active
+    name: "Thursday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_thursday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_thursday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_thursday_active) = 0;
+
+  - platform: template
+    id: irrigation_friday_active
+    name: "Friday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_friday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_friday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_friday_active) = 0;
+  
+  - platform: template
+    id: irrigation_saturday_active
+    name: "Saturday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_saturday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_saturday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_saturday_active) = 0;
+
+  - platform: template
+    id: irrigation_sunday_active
+    name: "Sunday"
+    icon: mdi:calendar-week
+    lambda: |-
+      if (id(global_sunday_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_sunday_active) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_sunday_active) = 0;
+
+  - platform: template
+    id: irrigation_zone1_duration_plus
+    name: "Zone1 Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)++;
+          id(global_zone1_duration) = min(id(global_zone1_duration),20);
+
+  - platform: template
+    id: irrigation_zone1_duration_minus
+    name: "Zone1 Minus"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)--;
+          id(global_zone1_duration) = max(id(global_zone1_duration),0);
+
+
+  - platform: template
+    id: irrigation_zone2_duration_plus
+    name: "Zone2 Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)++;
+          id(global_zone1_duration) = min(id(global_zone2_duration),20);
+
+  - platform: template
+    id: irrigation_zone2_duration_minus
+    name: "Zone2 Minus"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)--;
+          id(global_zone1_duration) = max(id(global_zone2_duration),0);
+
+  - platform: template
+    id: irrigation_zone3_duration_plus
+    name: "Zone3 Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)++;
+          id(global_zone1_duration) = min(id(global_zone3_duration),30);
+
+  - platform: template
+    id: irrigation_zone3_duration_minus
+    name: "Zone3 Minus"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)--;
+          id(global_zone1_duration) = max(id(global_zone3_duration),0);
+
+
+
+  - platform: template
+    id: irrigation_zone4_duration_plus
+    name: "Zone4 Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)++;
+          id(global_zone1_duration) = min(id(global_zone4_duration),40);
+
+  - platform: template
+    id: irrigation_zone4_duration_minus
+    name: "Zone4 Minus"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)--;
+          id(global_zone1_duration) = max(id(global_zone4_duration),0);
+
+
+
+  - platform: template
+    id: irrigation_zone5_duration_plus
+    name: "Zone5 Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)++;
+          id(global_zone1_duration) = min(id(global_zone5_duration),50);
+
+  - platform: template
+    id: irrigation_zone5_duration_minus
+    name: "Zone5 Mnusi"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)--;
+          id(global_zone1_duration) = max(id(global_zone5_duration),0);
+
+
+
+  - platform: template
+    id: irrigation_zone6_duration_plus
+    name: "Zone6 Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)++;
+          id(global_zone1_duration) = min(id(global_zone6_duration),60);
+
+  - platform: template
+    id: irrigation_zone6_duration_minus
+    name: "Zone6 Minus"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_zone1_duration)--;
+          id(global_zone1_duration) = max(id(global_zone6_duration),0);
+
+
+
+  - platform: template
+    id: irrigation_start_plus
+    name: "Start Plus"
+    icon: mdi:plus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_start_hour) = (id(global_start_hour) + 1) % 24;
+
+  - platform: template
+    id: irrigation_start_minus
+    name: "Start Minus"
+    icon: mdi:minus-box-outline
+    lambda: |-
+      return false;
+    turn_on_action:
+      - lambda: |-
+          id(global_start_hour) = (id(global_start_hour) - 1) % 24;
+
+
 

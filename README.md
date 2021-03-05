@@ -17,12 +17,16 @@ Static IPs for hardwired Raspberry ETH MAC
 
 ### Device Tree
 ```
-- HomeAssistant 
+- HomeAssistant (RaspberryPI)
+    - GPIO
+        - Motion (PIR): GND (black),+5V (red), Motion (Yellow) GPIO17, Tamper (Green)  GPIO18
     - ZWave (Zoos USB)
         - Honeywell Thermostat
         - Lights
         - Lights dimmable
         - Lights with occupancy sensor
+        - Motion Sensor with Temp
+
     - ETHERNET
         - Self - Raspbery Pi 4 (POE)
         - Unifi Gateway+24Port POE switch
@@ -34,8 +38,8 @@ Static IPs for hardwired Raspberry ETH MAC
             - Cover Twin
             - Cover Single
         - ESPHome Garage Monitor  (POE)
-            - Dryer Current
-            - Washer Current
+            - Dryer Current (Current Transformer)
+            - Washer Current  (Current Transformer)
             - Garage Doors: Exterior, Interior, Exterior Gateway
         - Pentair Pool Ethenet gateway  (POE)
             - ZigBee
@@ -47,8 +51,18 @@ Static IPs for hardwired Raspberry ETH MAC
             - Zigbee
                 - SolarEdge Inverter
         - SolarEdge Inverter
-        - TV 1
-        - TV 2
-        - ChromeCast1
+        - TV Sony OLED 65"
+        - SoundBar
+
         
 ``` 
+
+
+Planning Future
+- Gas Ulitity Meter
+- Water Meter
+- Range Current Sensor
+- PIR sensor kitchen
+- Outside Cameras
+- Interface to Smoke Detectors
+

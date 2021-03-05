@@ -9,15 +9,15 @@
 #                          |                   |
 #                          |                   |
 #                          |                   |
-#                          | GPIO13     GPIO5  |
-#                          | GPIO14     GPIO4  |
-#                          | GPIO15     GPIO3  |
+#                          | GPIO13     GPIO5  | x
+#                          | GPIO14     GPIO4  | x
+#                          | GPIO15     GPIO3  | x
 #                          | GPIO16     GPIO2  |
 #                          | GPIO32     GPIO1  |
 #                          | GPIO33     GPIO0  |
 #                          | GPIO34    ESP_EN  |
-#                          | GPIO35       GND  |
-#                          | GPIO36       3V3  |
+#                       x  | GPIO35       GND  | x 
+#                       x  | GPIO36       3V3  | x
 #                          | GPIO39        5V  |
 #                          |                   |
 #                          |                   |
@@ -26,18 +26,49 @@
 #                          |    ANTENNA        |
 #                          +-------------------+
 #
+#          +-------------------+
+#          |     ANTENNA       |
+#          |                   |
+#          |                   |
+#          |                   |
+#         o| 5V         GPI39  |o    Vsupp
+#    3V3 -o| 3V3        GPI36  |o    CT2
+#    GND -o| GND        GPI35  |o    CT1
+#         o| ESP_EN     GPI34  |o    (Button1)
+#         o| GPIO0     GPIO33  |o    
+#         o| GPIO1     GPIO32  |o                
+#         o| GPIO2     GPIO16  |o    
+# REED1   o| GPIO3     GPIO15  |o    
+# REED2   o| GPIO4     GPIO14  |o    
+# REED3   o| GPIO5     GPIO13  |o   
+#          |                   |
+#          |                   |
+#          |                   |
+#          |                   |
+#          |    ETHERNET       |
+#          +-------------------+
+
+# PIR
+# DHT22
+# Smoke Alarm TRIGGER
+# Smoke Alarm SENSE
+# 
+#
+#
 # TIP:create one reference for each current transformer
 # sharing one common reference caused crosstalk and incorrect readings
 #
-#  3V3 ----[220]---+-----[220]------GND
+#  3V3 ----[220]---+-----[220]-----GND
 #                  |
 #                  +-----|[-10u----GND
 #                  |
-#                  +-- 1V6 -- CT2_REF
+#                  +-------------- CT2_REF  (1V6)
 #
-#  3V3 ----[100]---+-----[100]------GND
+#  3V3 ----[100]---+-----[100]-----GND
 #                  |
-#                  +-- 1V6 -- CT1_REF
+#                  +-----|[-10u----GND
+#                  |
+#                  +-------------- CT1_REF (1V6)
 #
 # CT1 ---[220]----CT1_REF
 # CT2 ---[220]----CT2_REF
@@ -50,6 +81,7 @@
 #  (x6) REED2                          
 #  (x7) REED3
 #  (x8) GND         
+#
 # https://learn.openenergymonitor.org/electricity-monitoring/ct-sensors/yhdc-sct-013-000-ct-sensor-report                
 
 esphome:
