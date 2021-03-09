@@ -6,6 +6,10 @@
 #https://github.com/esphome/esphome/issues/25
 
 
+https://github.com/benct/lovelace-multiple-entity-row
+
+
+
 #
 #                       3V3 (1) o | 
 #                       GND (2) o | 
@@ -62,6 +66,10 @@ api:
 
 ota:
 
+time:
+  - platform: sntp
+    id: sntp_time
+
 i2c:
   sda: 2
   scl: 4
@@ -91,6 +99,10 @@ i2c:
 
 
 globals:
+   - id: global_cycle_active
+     type: int
+     restore_value: no
+     initial_value: '0'
    - id: global_monday_active
      type: int
      restore_value: yes
@@ -192,7 +204,6 @@ globals:
 
 
 
-
 sensor:
   - platform: template
     name: "Zone 1"
@@ -200,7 +211,7 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone1_duration) != id(global_zone1_duration)) {
+      if (id(global_zone1_duration_prev) != id(global_zone1_duration)) {
         id(global_zone1_duration_prev) = id(global_zone1_duration);
         return id(global_zone1_duration);
       } else {
@@ -213,7 +224,7 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone2_duration) != id(global_zone2_duration)) {
+      if (id(global_zone2_duration_prev) != id(global_zone2_duration)) {
         id(global_zone2_duration_prev) = id(global_zone2_duration);
         return id(global_zone2_duration);
       } else {
@@ -226,7 +237,7 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone3_duration) != id(global_zone3_duration)) {
+      if (id(global_zone3_duration_prev) != id(global_zone3_duration)) {
         id(global_zone3_duration_prev) = id(global_zone3_duration);
         return id(global_zone3_duration);
       } else {
@@ -239,7 +250,7 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone4_duration) != id(global_zone4_duration)) {
+      if (id(global_zone4_duration_prev) != id(global_zone4_duration)) {
         id(global_zone4_duration_prev) = id(global_zone4_duration);
         return id(global_zone4_duration);
       } else {
@@ -252,7 +263,7 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone5_duration) != id(global_zone5_duration)) {
+      if (id(global_zone5_duration_prev) != id(global_zone5_duration)) {
         id(global_zone5_duration_prev) = id(global_zone5_duration);
         return id(global_zone5_duration);
       } else {
@@ -265,7 +276,7 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone6_duration) != id(global_zone6_duration)) {
+      if (id(global_zone6_duration_prev) != id(global_zone6_duration)) {
         id(global_zone6_duration_prev) = id(global_zone6_duration);
         return id(global_zone6_duration);
       } else {
@@ -286,65 +297,210 @@ text_sensor:
         id(global_start_hour_prev) = id(global_start_hour);
         char temp[1000];
         int val = id(global_start_hour);
-        sprintf(temp,"%02d:00", val);
+        int val_min = (val & 0x1) ? 30 : 0;
+        val >>= 1;
+        sprintf(temp,"%02d:%02d", val,val_min);
         std::string str = temp;
         return {str};
       } else {
         return {};
       }
     update_interval: 250ms
+  - platform: template
+    name: "Status"
+    icon: mdi:script-text-outline
+    lambda: |-
+        static std::string prev_value{};
+        char week[8];
+        week[0] = id(global_monday_active) > 0 ? 'M' : '_';
+        week[1] = id(global_tuesday_active) > 0 ? 'T' : '_';
+        week[2] = id(global_wednesday_active) > 0 ? 'W' : '_';
+        week[3] = id(global_thursday_active) > 0 ? 'T' : '_';
+        week[4] = id(global_friday_active) > 0 ? 'F' : '_';
+        week[5] = id(global_saturday_active) > 0 ? 'S' : '_';
+        week[6] = id(global_sunday_active) > 0 ? 'S' : '_';
+        week[7] = 0;
+
+        int zones_duration[6] = {
+          id(global_zone1_duration),
+          id(global_zone2_duration),
+          id(global_zone3_duration),
+          id(global_zone4_duration),
+          id(global_zone5_duration),
+          id(global_zone6_duration)
+        };
+
+        int zone_relay[6] = {
+          id(relay_valve_zone1).state,
+          id(relay_valve_zone2).state,
+          id(relay_valve_zone3).state,
+          id(relay_valve_zone4).state,
+          id(relay_valve_zone5).state,
+          id(relay_valve_zone6).state
+        };
+
+        char zone_relay_string[7];
+        zone_relay_string[0] = zone_relay[0] ? '1' : '_';
+        zone_relay_string[1] = zone_relay[1] ? '2' : '_';
+        zone_relay_string[2] = zone_relay[2] ? '3' : '_';
+        zone_relay_string[3] = zone_relay[3] ? '4' : '_';
+        zone_relay_string[4] = zone_relay[4] ? '5' : '_';
+        zone_relay_string[5] = zone_relay[5] ? '6' : '_';
+        zone_relay_string[6] = 0;
+
+        std::string result{};
+        int Nmaxlen = 1000;
+        result.resize(Nmaxlen);
+        char* ptr = &result.front();
+
+        auto time = id(sntp_time).now();
+
+        int hour = time.hour;
+        int minute = time.minute;
+
+        int start_hour = id(global_start_hour);
+        int start_minute = (start_hour & 0x1) ? 30 : 0;
+        start_hour >>= 1;
+
+        bool is_running = id(global_cycle_active) > 0;
+
+        int len = snprintf(
+          ptr,
+          Nmaxlen,
+          "%02d:%02d   %s %s\n[%02d:%02d]      [%s]",
+          hour,minute, 
+          is_running ? "RUN" : "   ",
+          zone_relay_string,
+          start_hour,start_minute, week
+ 
+          );
+
+        result.resize(len);
+
+        bool same = prev_value.compare(result) == 0;
+        prev_value = result;
+
+        if (same) {
+          return {};
+        } else {
+          return result;
+        }
+    update_interval: 1s
 
 
 
 switch:
+  - platform: template
+    id: irrigation_cycle_active
+    name: "Run Cycle"
+    icon: mdi:av-timer
+    lambda: |-
+      if (id(global_cycle_active) > 0) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: |-
+          id(global_cycle_active) = 1;
+      - script.execute: execute_cycle
+    turn_off_action:
+      - lambda: |-
+          id(global_cycle_active) = 0;
+      - script.stop: execute_cycle
+      - switch.turn_off: relay_valve_zone1
+      - switch.turn_off: relay_valve_zone2
+      - switch.turn_off: relay_valve_zone3
+      - switch.turn_off: relay_valve_zone4
+      - switch.turn_off: relay_valve_zone5
+      - switch.turn_off: relay_valve_zone6
+
+
   - platform: gpio
-    pin: GPIO12
-    name: "Valve Zone 1"
+    pin: 
+      number: GPIO12
+      inverted: true
+    name: "Zone 1"
     id: relay_valve_zone1
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: &interlock_group [relay_valve_zone1, relay_valve_zone2,relay_valve_zone3,relay_valve_zone4,relay_valve_zone5,relay_valve_zone6]
     interlock_wait_time: 2s
+    on_turn_on:
+      then:
+        - delay: !lambda "return id(global_zone1_duration) * 1000;"
+        - switch.turn_off: relay_valve_zone1
 
   - platform: gpio
-    pin: GPIO13
-    name: "Valve Zone 2"
+    pin: 
+      number: GPIO13
+      inverted: true
+    name: "Zone 2"
     id: relay_valve_zone2
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    on_turn_on:
+      then:
+        - delay: !lambda "return id(global_zone2_duration) * 1000;"
+        - switch.turn_off: relay_valve_zone2
 
   - platform: gpio
-    pin: GPIO14
-    name: "Valve Zone 3"
+    pin: 
+      number: GPIO14
+      inverted: true
+    name: "Zone 3"
     id: relay_valve_zone3
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    on_turn_on:
+      then:
+        - delay: !lambda "return id(global_zone3_duration) * 1000;"
+        - switch.turn_off: relay_valve_zone3
 
   - platform: gpio
-    pin: GPIO15
-    name: "Valve Zone 4"
+    pin: 
+      number: GPIO15
+      inverted: true
+    name: "Zone 4"
     id: relay_valve_zone4
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    on_turn_on:
+      then:
+        - delay: !lambda "return id(global_zone4_duration) * 1000;"
+        - switch.turn_off: relay_valve_zone4
 
   - platform: gpio
-    pin: GPIO16
-    name: "Valve Zone 5"
+    pin: 
+      number: GPIO16
+      inverted: true
+    name: "Zone 5"
     id: relay_valve_zone5
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    on_turn_on:
+      then:
+        - delay: !lambda "return id(global_zone5_duration) * 1000;"
+        - switch.turn_off: relay_valve_zone5
 
   - platform: gpio
-    pin: GPIO32
-    name: "Valve Zone 6"
+    pin: 
+      number: GPIO32
+      inverted: true
+    name: "Zone 6"
     id: relay_valve_zone6
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    on_turn_on:
+      then:
+        - delay: !lambda "return id(global_zone6_duration) * 1000;"
+        - switch.turn_off: relay_valve_zone6
+
 
   - platform: template
     id: irrigation_monday_active
@@ -498,8 +654,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone2_duration),20);
+          id(global_zone2_duration)++;
+          id(global_zone2_duration) = min(id(global_zone2_duration),20);
 
   - platform: template
     id: irrigation_zone2_duration_minus
@@ -509,8 +665,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)--;
-          id(global_zone1_duration) = max(id(global_zone2_duration),0);
+          id(global_zone2_duration)--;
+          id(global_zone2_duration) = max(id(global_zone2_duration),0);
 
   - platform: template
     id: irrigation_zone3_duration_plus
@@ -520,8 +676,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone3_duration),30);
+          id(global_zone3_duration)++;
+          id(global_zone3_duration) = min(id(global_zone3_duration),20);
 
   - platform: template
     id: irrigation_zone3_duration_minus
@@ -531,8 +687,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)--;
-          id(global_zone1_duration) = max(id(global_zone3_duration),0);
+          id(global_zone3_duration)--;
+          id(global_zone3_duration) = max(id(global_zone3_duration),0);
 
 
 
@@ -544,8 +700,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone4_duration),40);
+          id(global_zone4_duration)++;
+          id(global_zone4_duration) = min(id(global_zone4_duration),20);
 
   - platform: template
     id: irrigation_zone4_duration_minus
@@ -555,8 +711,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)--;
-          id(global_zone1_duration) = max(id(global_zone4_duration),0);
+          id(global_zone4_duration)--;
+          id(global_zone4_duration) = max(id(global_zone4_duration),0);
 
 
 
@@ -568,19 +724,19 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone5_duration),50);
+          id(global_zone5_duration)++;
+          id(global_zone5_duration) = min(id(global_zone5_duration),20);
 
   - platform: template
     id: irrigation_zone5_duration_minus
-    name: "Zone5 Mnusi"
+    name: "Zone5 Minus"
     icon: mdi:minus-box-outline
     lambda: |-
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)--;
-          id(global_zone1_duration) = max(id(global_zone5_duration),0);
+          id(global_zone5_duration)--;
+          id(global_zone5_duration) = max(id(global_zone5_duration),0);
 
 
 
@@ -592,8 +748,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone6_duration),60);
+          id(global_zone6_duration)++;
+          id(global_zone6_duration) = min(id(global_zone6_duration),20);
 
   - platform: template
     id: irrigation_zone6_duration_minus
@@ -603,8 +759,8 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_zone1_duration)--;
-          id(global_zone1_duration) = max(id(global_zone6_duration),0);
+          id(global_zone6_duration)--;
+          id(global_zone6_duration) = max(id(global_zone6_duration),0);
 
 
 
@@ -616,7 +772,7 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_start_hour) = (id(global_start_hour) + 1) % 24;
+          id(global_start_hour) = (id(global_start_hour) + 1) % 48;
 
   - platform: template
     id: irrigation_start_minus
@@ -626,7 +782,33 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_start_hour) = (id(global_start_hour) - 1) % 24;
+          id(global_start_hour) = (id(global_start_hour) - 1) % 48;
 
+
+
+
+
+script:
+  - id: execute_cycle
+    then:
+      - switch.turn_on: relay_valve_zone1
+      - wait_until:
+          switch.is_off: relay_valve_zone1
+      - switch.turn_on: relay_valve_zone2
+      - wait_until:
+          switch.is_off: relay_valve_zone2
+      - switch.turn_on: relay_valve_zone3
+      - wait_until:
+          switch.is_off: relay_valve_zone3
+      - switch.turn_on: relay_valve_zone4
+      - wait_until:
+          switch.is_off: relay_valve_zone4
+      - switch.turn_on: relay_valve_zone5
+      - wait_until:
+          switch.is_off: relay_valve_zone5
+      - switch.turn_on: relay_valve_zone6
+      - wait_until:
+          switch.is_off: relay_valve_zone6
+      - switch.turn_off: irrigation_cycle_active
 
 

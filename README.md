@@ -6,7 +6,7 @@
 ### Philosophy
 - All functions should work like "dumb" devices
 - All home automation should work without internet connection
-- Prefer hardwired
+- Prefer hardwired; No WiFi dropouts/insecurity + POE can have central battery backup
 
 
 ### Router:
@@ -19,13 +19,25 @@ Static IPs for hardwired Raspberry ETH MAC
 ```
 - HomeAssistant (RaspberryPI)
     - GPIO
-        - Motion (PIR): GND (black),+5V (red), Motion (Yellow) GPIO17, Tamper (Green)  GPIO18
+        - Motion (Office) (PIR): 
+            GND (black),+5V (red),
+            Motion (Yellow) GPIO17, 
+            Tamper (Green)  GPIO18
+
     - ZWave (Zoos USB)
         - Honeywell Thermostat
+            - Inside Temperature
+            - Inside Humidity
+            - Inside Set Temp
         - Lights
         - Lights dimmable
         - Lights with occupancy sensor
+            - Occupancy Hallway
+            - Occupancy Garage
+            - Occupancy Guest Bath
         - Motion Sensor with Temp
+            - Drive Way Motion
+
 
     - ETHERNET
         - Self - Raspbery Pi 4 (POE)
@@ -36,22 +48,41 @@ Static IPs for hardwired Raspberry ETH MAC
             - ChromeCasts
         - ESPHome Garage Doors  (POE)
             - Cover Twin
+                - Sensor Closed Reed Switch 
+                - Sensor Open  Reed Switch
+                - Cover UP/STOP/DOWN
             - Cover Single
+                - Sensor Closed Reed Switch 
+                - Sensor Open  Reed Switch
+                - Cover UP/STOP/DOWN
         - ESPHome Garage Monitor  (POE)
-            - Dryer Current (Current Transformer)
-            - Washer Current  (Current Transformer)
-            - Garage Doors: Exterior, Interior, Exterior Gateway
+            - Dryer Current (Current Transformer) SCT-013-000
+            - Washer Current  (Current Transformer) SCT-013-000
+            - Doors Reed Switches: Exterior, Interior, Exterior Gate 
+
         - Pentair Pool Ethenet gateway  (POE)
             - ZigBee
                 - Pentair Pool controller
+                    - Pool Water Temperature
+                    - SPA  Water Temperature
+                    - Outside Temperature
+                    - Switch Filter Pump
+                    - Switch Waterfall
+                    - Switch Jets
+                    - SPA Thermostat
+                    - (Pool Thermostat)
+
         - Rainforest Energy Gateway (POE)
             - Zigbee
                 - SDG&E Electrical Meter
+                    - kW grid demand
+                    - kWh net total use
         - SolarEdge Gateway  (POE)
             - Zigbee
                 - SolarEdge Inverter
-        - SolarEdge Inverter
-        - TV Sony OLED 65"
+        - SolarEdge Inverter Modbus
+            - kW,A,Vac,Vdc, ...
+        - TV Sony OLED 
         - SoundBar
 
         
@@ -61,8 +92,12 @@ Static IPs for hardwired Raspberry ETH MAC
 Planning Future
 - Gas Ulitity Meter
 - Water Meter
+- Water Temperature
+- Water Pressure
 - Range Current Sensor
 - PIR sensor kitchen
 - Outside Cameras
 - Interface to Smoke Detectors
+- Irrigation
+
 
