@@ -6,7 +6,7 @@
 #https://github.com/esphome/esphome/issues/25
 
 
-https://github.com/benct/lovelace-multiple-entity-row
+#https://github.com/benct/lovelace-multiple-entity-row
 
 
 
@@ -15,34 +15,26 @@ https://github.com/benct/lovelace-multiple-entity-row
 #                       GND (2) o | 
 #                    ESP_EN (3) o | 
 #                     GPIO5 (4) o |  [Reserved ETH]
-#                     GPIO2 (5) o | SDA
-#                     GPIO4 (6) o | SCL
-#    RELAY_1         GPIO12 (7) o | 
-#    RELAY_2         GPIO13 (8) o | 
-#    RELAY_3         GPIO14 (9) o | 
-#    RELAY_4         GPIO15(10) o | 
-#    RELAY_5         GPIO16(11) o | 
+#            SDA      GPIO2 (5) o | SDA
+#            SCL      GPIO4 (6) o | SCL
+#                    GPIO12 (7) o | 
+#                    GPIO13 (8) o | 
+#                    GPIO14 (9) o | DHT
+#                    GPIO15(10) o | 
+#                    GPIO16(11) o | 
 #                    GPIO17(12) o |  [Reserved ETH]
-#    RELAY_6         GPIO32(13) o | 
+#                    GPIO32(13) o | 
 #                    GPIO33(14) o |  [Reserved Status LED]
 #                     GPI34(15) o |  [User Button]
 #                     GPI35(16) o |  
 #                     GPI36(17) o | 
 #                     GPI39(18) o | 
-#                       GND(19) o | --------------+
-#                     5Vext(20) o | -----------+  |            
-#                       GND(19) o | -----------|--+-------POWER_GND
-#   LCD_GND             GND(19) o |            |
-#   RELAY_GND           GND(19) o |            |
-#                     5Vext(20) o | -----------+----------POWER_VCC
-#   RELAY_VCC         5Vext(20) o | 
-#   LCD_VCC           5Vext(20) o | 
-
-
-
-
-
-
+#             GND       GND(19) o | 
+#             Vcc     5Vext(20) o | 
+#
+#  LCD: GND,VCC,SDA,SCL
+#  Relay PCF2574: GND,VCC,SDA,SCL
+#
 
 esphome:
   name: irrigation_controller
@@ -60,6 +52,7 @@ ethernet:
 
 # Enable logging
 logger:
+  level: DEBUG
 
 # Enable Home Assistant API
 api:
@@ -67,39 +60,70 @@ api:
 ota:
 
 time:
-  - platform: sntp
-    id: sntp_time
+  - platform: homeassistant
+    id: global_time
+    on_time:
+      # Every 30 minutes
+      - seconds: 0
+        minutes: /30
+        then:
+          - lambda: |-
+              auto time = id(global_time).now();
+              bool time_is_valid = time.is_valid();
+
+              int hour = time.hour;
+              int minute = time.minute;
+
+              int current_time = hour * 2 + minute / 30;
+
+              int start_time = id(global_start_hour);
+
+              if (time_is_valid &&
+                  id(global_automatic_on) > 0 && 
+                  start_time == current_time) 
+              {
+                  id(irrigation_cycle_active).turn_on();
+              }
+
 
 i2c:
   sda: 2
   scl: 4
   scan: True
+  frequency: 100kHz
   id: bus_a
 
-#isplay:
-#  - platform: lcd_gpio
-#    dimensions: 18x2
-#    data_pins:
-#      - GPIO12
-#      - GPIO13
-#      - GPIO14
-#      - GPIO15
-#    enable_pin: GPIO16
-#    rs_pin: GPIO32
-#    lambda: |-
-#      it.print("Hello World!");
+pcf8574:
+  - id: 'pcf8574_hub'
+    address: 0x24
+    pcf8575: False
 
 
-#  GPIO12 (7) o | RELAY_1
-#  GPIO13 (8) o | RELAY_2
-#  GPIO14 (9) o | RELAY_3
-#  GPIO15(10) o | RELAY_4
-#  GPIO16(11) o | RELAY_5
+display:
+  - platform: lcd_pcf8574
+    id: the_display
+    dimensions: 20x4
+    address: 0x27
+    update_interval: 500ms
+    lambda: |-
+      std::string text = id(status_text).state;
+      const char* test_str = text.c_str();
+
+      it.printf("%s",test_str);
+      //it.printf("Zone 1: %d min",id(global_zone1_duration));
 
 
 
 globals:
+   - id: global_automatic_on
+     type: int
+     restore_value: yes
+     initial_value: '0'
    - id: global_cycle_active
+     type: int
+     restore_value: no
+     initial_value: '0'
+   - id: global_ui_state
      type: int
      restore_value: no
      initial_value: '0'
@@ -162,57 +186,32 @@ globals:
      restore_value: yes
      initial_value: '1'
 
-   - id: global_zone1_duration_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
-   - id: global_zone2_duration_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
-   - id: global_zone3_duration_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
-   - id: global_zone4_duration_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
-   - id: global_zone5_duration_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
-   - id: global_zone6_duration_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
    - id: global_start_hour
      type: int
      restore_value: yes
      initial_value: '20'
 
-   - id: global_start_hour_prev
-     type: int
-     restore_value: no
-     initial_value: '-1'
-
 
 
 sensor:
+  - platform: dht
+    pin: 14
+    model: AM2302
+    temperature:
+      name: "Garage Temperature"
+    humidity:
+      name: "Garage Humidity"
+    update_interval: 120s
+
   - platform: template
     name: "Zone 1"
     icon: mdi:timer-outline
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone1_duration_prev) != id(global_zone1_duration)) {
-        id(global_zone1_duration_prev) = id(global_zone1_duration);
+      static int prev = -1;
+      if (prev != id(global_zone1_duration)) {
+        prev = id(global_zone1_duration);
         return id(global_zone1_duration);
       } else {
         return {};
@@ -224,8 +223,9 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone2_duration_prev) != id(global_zone2_duration)) {
-        id(global_zone2_duration_prev) = id(global_zone2_duration);
+      static int prev = -1;
+      if (prev != id(global_zone2_duration)) {
+        prev = id(global_zone2_duration);
         return id(global_zone2_duration);
       } else {
         return {};
@@ -237,8 +237,9 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone3_duration_prev) != id(global_zone3_duration)) {
-        id(global_zone3_duration_prev) = id(global_zone3_duration);
+      static int prev = -1;
+      if (prev != id(global_zone3_duration)) {
+        prev = id(global_zone3_duration);
         return id(global_zone3_duration);
       } else {
         return {};
@@ -250,8 +251,9 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone4_duration_prev) != id(global_zone4_duration)) {
-        id(global_zone4_duration_prev) = id(global_zone4_duration);
+      static int prev = -1;
+      if (prev != id(global_zone4_duration)) {
+        prev = id(global_zone4_duration);
         return id(global_zone4_duration);
       } else {
         return {};
@@ -263,8 +265,9 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone5_duration_prev) != id(global_zone5_duration)) {
-        id(global_zone5_duration_prev) = id(global_zone5_duration);
+      static int prev = -1;
+      if (prev != id(global_zone5_duration)) {
+        prev = id(global_zone5_duration);
         return id(global_zone5_duration);
       } else {
         return {};
@@ -276,8 +279,9 @@ sensor:
     unit_of_measurement: min
     accuracy_decimals: 0
     lambda: |-
-      if (id(global_zone6_duration_prev) != id(global_zone6_duration)) {
-        id(global_zone6_duration_prev) = id(global_zone6_duration);
+      static int prev = -1;
+      if (prev != id(global_zone6_duration)) {
+        prev = id(global_zone6_duration);
         return id(global_zone6_duration);
       } else {
         return {};
@@ -293,8 +297,10 @@ text_sensor:
     name: "Start Time"
     icon: mdi:clock-outline
     lambda: |-
-      if (id(global_start_hour_prev) != id(global_start_hour)) {
-        id(global_start_hour_prev) = id(global_start_hour);
+      static int prev = -1;
+
+      if (prev != id(global_start_hour)) {
+        prev = id(global_start_hour);
         char temp[1000];
         int val = id(global_start_hour);
         int val_min = (val & 0x1) ? 30 : 0;
@@ -308,7 +314,10 @@ text_sensor:
     update_interval: 250ms
   - platform: template
     name: "Status"
+    id: status_text
     icon: mdi:script-text-outline
+    update_interval: 200ms
+
     lambda: |-
         static std::string prev_value{};
         char week[8];
@@ -339,6 +348,7 @@ text_sensor:
           id(relay_valve_zone6).state
         };
 
+
         char zone_relay_string[7];
         zone_relay_string[0] = zone_relay[0] ? '1' : '_';
         zone_relay_string[1] = zone_relay[1] ? '2' : '_';
@@ -353,10 +363,19 @@ text_sensor:
         result.resize(Nmaxlen);
         char* ptr = &result.front();
 
-        auto time = id(sntp_time).now();
+        char time_str[10];
+        const char* time_str_ptr = time_str;
 
-        int hour = time.hour;
-        int minute = time.minute;
+        auto time = id(global_time).now();
+        bool time_is_valid = time.is_valid();
+        if (time_is_valid) {
+          int hour = time.hour;
+          int minute = time.minute;
+          snprintf(time_str,sizeof(time_str),"%02d:%02d",hour,minute);
+        } else {
+          time_str_ptr = "??:??";
+        }
+
 
         int start_hour = id(global_start_hour);
         int start_minute = (start_hour & 0x1) ? 30 : 0;
@@ -364,12 +383,26 @@ text_sensor:
 
         bool is_running = id(global_cycle_active) > 0;
 
+        const char* mode_str = "    ";
+        if (!time_is_valid) {
+          mode_str = "CLK!";
+        } else if (is_running) {
+          mode_str = " RUN";
+        } else if (id(global_automatic_on) > 0) {
+          mode_str = "AUTO";
+        } else {
+          mode_str = " OFF";
+        }
+
+
         int len = snprintf(
           ptr,
           Nmaxlen,
-          "%02d:%02d   %s %s\n[%02d:%02d]      [%s]",
-          hour,minute, 
-          is_running ? "RUN" : "   ",
+          "Irrigation     %s\n"
+          " %s       %s\n"
+          "[%02d:%02d]    [%s]",
+          mode_str,
+          time_str_ptr, 
           zone_relay_string,
           start_hour,start_minute, week
  
@@ -383,9 +416,9 @@ text_sensor:
         if (same) {
           return {};
         } else {
+          id(the_display).update();
           return result;
         }
-    update_interval: 1s
 
 
 
@@ -415,11 +448,28 @@ switch:
       - switch.turn_off: relay_valve_zone5
       - switch.turn_off: relay_valve_zone6
 
+  - platform: template
+    id: irrigation_schedule_on
+    name: "Schedule On"
+    icon: mdi:calendar-clock
+    lambda: |-
+      return id(global_automatic_on) > 0;
+    turn_on_action:
+      - lambda: |-
+          id(global_automatic_on) = 1;
+    turn_off_action:
+      - lambda: |-
+          id(global_automatic_on) = 0;
+
 
   - platform: gpio
     pin: 
-      number: GPIO12
-      inverted: true
+      pcf8574: pcf8574_hub
+      # Use pin number 0
+      number: 0
+      # One of INPUT or OUTPUT
+      mode: OUTPUT
+      inverted: True
     name: "Zone 1"
     id: relay_valve_zone1
     icon: mdi:valve
@@ -433,8 +483,12 @@ switch:
 
   - platform: gpio
     pin: 
-      number: GPIO13
-      inverted: true
+      pcf8574: pcf8574_hub
+      # Use pin number 0
+      number: 1
+      # One of INPUT or OUTPUT
+      mode: OUTPUT
+      inverted: True
     name: "Zone 2"
     id: relay_valve_zone2
     icon: mdi:valve
@@ -447,8 +501,12 @@ switch:
 
   - platform: gpio
     pin: 
-      number: GPIO14
-      inverted: true
+      pcf8574: pcf8574_hub
+      # Use pin number 0
+      number: 2
+      # One of INPUT or OUTPUT
+      mode: OUTPUT
+      inverted: True
     name: "Zone 3"
     id: relay_valve_zone3
     icon: mdi:valve
@@ -461,8 +519,12 @@ switch:
 
   - platform: gpio
     pin: 
-      number: GPIO15
-      inverted: true
+      pcf8574: pcf8574_hub
+      # Use pin number 0
+      number: 3
+      # One of INPUT or OUTPUT
+      mode: OUTPUT
+      inverted: True
     name: "Zone 4"
     id: relay_valve_zone4
     icon: mdi:valve
@@ -475,8 +537,12 @@ switch:
 
   - platform: gpio
     pin: 
-      number: GPIO16
-      inverted: true
+      pcf8574: pcf8574_hub
+      # Use pin number 0
+      number: 4
+      # One of INPUT or OUTPUT
+      mode: OUTPUT
+      inverted: True
     name: "Zone 5"
     id: relay_valve_zone5
     icon: mdi:valve
@@ -489,8 +555,12 @@ switch:
 
   - platform: gpio
     pin: 
-      number: GPIO32
-      inverted: true
+      pcf8574: pcf8574_hub
+      # Use pin number 0
+      number: 5
+      # One of INPUT or OUTPUT
+      mode: OUTPUT
+      inverted: True
     name: "Zone 6"
     id: relay_valve_zone6
     icon: mdi:valve

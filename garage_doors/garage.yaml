@@ -14,7 +14,7 @@
 #  GPIO4 ----[220] ----| 1    16| ---- SW1                   o| GPIO0     GPIO33  |o    
 #  GND ----------------| 2    15| ---- GND                   o| GPIO1     GPIO32  |o                
 #  SAFETY1 --[3K3] --- | 3    14| -----GPIO5                 o| GPIO2     GPIO16  |o    
-#    GND----|LED<|---- | 4    13| -----GND                   o| GPIO3     GPIO15  |o    
+#    GND-------------- | 4    13| -----GND                   o| GPIO3     GPIO15  |o    
 #  SAFETY2----[2K2]--- | 5    12| ----- GPIO15               o| GPIO4     GPIO14  |o    
 #  SAFETY2_GND  ------ | 6    11| -----GND                   o| GPIO5     GPIO13  |o   
 #  (GPIO16)--[220]-----| 7    10| ----- SW2                   |                   |
@@ -36,8 +36,7 @@
 # https://pages.mtu.edu/~suits/electronics/GarageElecEye.html
 
 
-# How safety sensor work; TDLR: receiver puts a pulsetrain on the supply by shorting to ground
-# https://pages.mtu.edu/~suits/electronics/GarageElecEye.html
+
 
 
 esphome:
@@ -61,6 +60,23 @@ logger:
 api:
 
 ota:
+
+
+#sensor:
+#  - platform: duty_cycle
+#    pin: 
+#      number: 32
+#      mode: INPUT_PULLUP
+#
+#    name: Safety 1
+#
+#update_interval: 5s
+#  - platform: duty_cycle
+#    pin: 
+#      number: 15
+#      mode: INPUT_PULLUP
+#    name: Safety 2
+#    update_interval: 5s
 
 
 
@@ -94,7 +110,7 @@ binary_sensor:
     device_class: safety
     #safety: on means unsafe, off means safe
     filters:
-      - delayed_on: 20ms
+      - delayed_on: 100ms
      #Theory: if the beam is uninterrupted (safe) we will get a zero every ~6ms
      #If we dont get a pulse within 20ms binary sensor will turn on (unsafe!)
       
@@ -119,7 +135,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: 15
+      number: 33
       mode: INPUT_PULLUP
     id: garage_safety2
     name: Garage Safety Beam (Twin)

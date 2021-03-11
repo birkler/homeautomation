@@ -35,6 +35,8 @@ Static IPs for hardwired Raspberry ETH MAC
             - Occupancy Hallway
             - Occupancy Garage
             - Occupancy Guest Bath
+            - Occupancy Master Bath
+
         - Motion Sensor with Temp
             - Drive Way Motion
 
@@ -44,8 +46,9 @@ Static IPs for hardwired Raspberry ETH MAC
         - Unifi Gateway+24Port POE switch
         - WIFI
             - Amazon ECHO
-            - Ring Doorbell
+            - Amazon Ring Doorbell
             - ChromeCasts
+            - Mobile Devices (HomeAssistant)
         - ESPHome Garage Doors  (POE)
             - Cover Twin
                 - Sensor Closed Reed Switch 
@@ -55,9 +58,18 @@ Static IPs for hardwired Raspberry ETH MAC
                 - Sensor Closed Reed Switch 
                 - Sensor Open  Reed Switch
                 - Cover UP/STOP/DOWN
+            - HC-SR04 UltraSonic Ranger
+                - Car Occupancy 1
+            - HC-SR04 UltraSonic Ranger
+                - Car Occupancy 2
+
         - ESPHome Garage Monitor  (POE)
-            - Dryer Current (Current Transformer) SCT-013-000
-            - Washer Current  (Current Transformer) SCT-013-000
+            - CT-clamp SCT-013-000
+                - Dryer Current 
+                    - Dryer On/Off
+            - CT-clamp SCT-013-000
+                - Washer Current 
+                    - Washer On/Off
             - Doors Reed Switches: Exterior, Interior, Exterior Gate 
 
         - Pentair Pool Ethenet gateway  (POE)
