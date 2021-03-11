@@ -77,8 +77,17 @@ time:
               int current_time = hour * 2 + minute / 30;
 
               int start_time = id(global_start_hour);
+              bool active_day = 
+                (time.day_of_week == 1 && id(global_sunday_active) > 0) || 
+                (time.day_of_week == 2 && id(global_monday_active) > 0) || 
+                (time.day_of_week == 3 && id(global_tuesday_active) > 0) || 
+                (time.day_of_week == 4 && id(global_wednesday_active) > 0) || 
+                (time.day_of_week == 5 && id(global_thursday_active) > 0) || 
+                (time.day_of_week == 6 && id(global_friday_active) > 0) || 
+                (time.day_of_week == 7 && id(global_saturday_active) > 0);
 
               if (time_is_valid &&
+                  active_day &&
                   id(global_automatic_on) > 0 && 
                   start_time == current_time) 
               {
@@ -478,7 +487,7 @@ switch:
     interlock_wait_time: 2s
     on_turn_on:
       then:
-        - delay: !lambda "return id(global_zone1_duration) * 1000;"
+        - delay: !lambda "return id(global_zone1_duration) * 60 * 1000;"
         - switch.turn_off: relay_valve_zone1
 
   - platform: gpio
@@ -496,7 +505,7 @@ switch:
     interlock: *interlock_group
     on_turn_on:
       then:
-        - delay: !lambda "return id(global_zone2_duration) * 1000;"
+        - delay: !lambda "return id(global_zone2_duration) * 60 * 1000;"
         - switch.turn_off: relay_valve_zone2
 
   - platform: gpio
@@ -514,7 +523,7 @@ switch:
     interlock: *interlock_group
     on_turn_on:
       then:
-        - delay: !lambda "return id(global_zone3_duration) * 1000;"
+        - delay: !lambda "return id(global_zone3_duration) * 60 * 1000;"
         - switch.turn_off: relay_valve_zone3
 
   - platform: gpio
@@ -532,7 +541,7 @@ switch:
     interlock: *interlock_group
     on_turn_on:
       then:
-        - delay: !lambda "return id(global_zone4_duration) * 1000;"
+        - delay: !lambda "return id(global_zone4_duration) * 60 * 1000;"
         - switch.turn_off: relay_valve_zone4
 
   - platform: gpio
@@ -550,7 +559,7 @@ switch:
     interlock: *interlock_group
     on_turn_on:
       then:
-        - delay: !lambda "return id(global_zone5_duration) * 1000;"
+        - delay: !lambda "return id(global_zone5_duration) * 60 * 1000;"
         - switch.turn_off: relay_valve_zone5
 
   - platform: gpio
@@ -568,7 +577,7 @@ switch:
     interlock: *interlock_group
     on_turn_on:
       then:
-        - delay: !lambda "return id(global_zone6_duration) * 1000;"
+        - delay: !lambda "return id(global_zone6_duration) * 60 * 1000;"
         - switch.turn_off: relay_valve_zone6
 
 
