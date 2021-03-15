@@ -429,6 +429,9 @@ text_sensor:
           return result;
         }
 
+binary_sensor:
+  - platform: status
+    name: "Irrigation Controller"
 
 
 switch:

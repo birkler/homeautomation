@@ -152,6 +152,9 @@ sensor:
 
 
 binary_sensor:
+  - platform: status
+    name: "Garage Monitor"
+
   - platform: gpio
     name: "Garage Exterior Door"
     device_class: Door

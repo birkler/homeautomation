@@ -7,16 +7,16 @@
 #  (x3) SAFETY1      -----[4K7]----- GPIO2                     |                   |
 #  (x4) REED1_CLOSED      -----[4K7]----- GPIO3                      |                   |
 #  (x5)                                                       |                   |
-#  (x6)                                                      o| 5V          GPI9  |o    
+#  (x6)                                                      o| 5V         GPI39  |o    RESERVED Vpowersupply
 #  (x7)                                                      o| 3V3        GPI36  |o    
-#  (x8) GND                                             GND -o| GND        GPI35  |o    
-#                      +-ILQ620-+                            o| ESP_EN     GPI34  |o    
-#  GPIO4 ----[220] ----| 1    16| ---- SW1                   o| GPIO0     GPIO33  |o    
-#  GND ----------------| 2    15| ---- GND                   o| GPIO1     GPIO32  |o                
-#  SAFETY1 --[3K3] --- | 3    14| -----GPIO5                 o| GPIO2     GPIO16  |o    
-#    GND-------------- | 4    13| -----GND                   o| GPIO3     GPIO15  |o    
-#  SAFETY2----[2K2]--- | 5    12| ----- GPIO15               o| GPIO4     GPIO14  |o    
-#  SAFETY2_GND  ------ | 6    11| -----GND                   o| GPIO5     GPIO13  |o   
+#  (x8) GND                                             GND -o| GND        GPI35  |o    (OPEN1)
+#                      +-ILQ620-+                            o| ESP_EN     GPI34  |o   RESERVED BUTTON
+#  GPIO4 ----[220] ----| 1    16| ---- SW1         RESERVED  o| GPIO0     GPIO33  |o    
+#  GND ----------------| 2    15| ---- GND         RESERVED  o| GPIO1     GPIO32  |o                
+#  SAFETY1 --[3K3] --- | 3    14| -----GPIO5                 o| GPIO2     GPIO16  |o    (SW2)
+#    GND-------------- | 4    13| -----GND        (CLOSE1)   o| GPIO3     GPIO15  |o    (SAFE2)
+#  SAFETY2----[2K2]--- | 5    12| ----- GPIO15     (SW1)     o| GPIO4     GPIO14  |o    (OPEN2)
+#  SAFETY2_GND  ------ | 6    11| -----GND         (SAFE1)   o| GPIO5     GPIO13  |o    (CLOSED2)
 #  (GPIO16)--[220]-----| 7    10| ----- SW2                   |                   |
 #  GND ----------------| 8     9| ------SW2_GND               |                   |
 #                      +--------+                             |                   |
@@ -62,24 +62,6 @@ api:
 ota:
 
 
-#sensor:
-#  - platform: duty_cycle
-#    pin: 
-#      number: 32
-#      mode: INPUT_PULLUP
-#
-#    name: Safety 1
-#
-#update_interval: 5s
-#  - platform: duty_cycle
-#    pin: 
-#      number: 15
-#      mode: INPUT_PULLUP
-#    name: Safety 2
-#    update_interval: 5s
-
-
-
 switch:
   - platform: gpio
     internal: true
@@ -92,27 +74,47 @@ switch:
     id: garage_door2_solid_state_relay
     restore_mode: ALWAYS_OFF
 
-
+sensor:
+  - platform: pulse_counter
+    pin:
+      number: 5
+      mode: INPUT_PULLUP
+      inverted: true
+    internal: yes
+    id: pluse_counter_safety1
+    update_interval: 100ms
+  - platform: pulse_counter
+    pin:
+      number: 15
+      mode: INPUT_PULLUP
+      inverted: true
+    internal: yes
+    id: pluse_counter_safety2
+    update_interval: 100ms
 
 binary_sensor:
+  - platform: status
+    name: "Garage Door Controller"
+
   - platform: gpio
     name: "Garage Door 1 ESP button"
     pin:
       number: 34
       inverted: True
       mode: INPUT_PULLUP
-  - platform: gpio
-    pin:
-      number: 5
-      mode: INPUT_PULLUP
+
+  - platform: template
     id: garage_safety1
-    name: Garage Safety Beam (Single)
+    name: "Garage Safety Beam (Single)"
     device_class: safety
-    #safety: on means unsafe, off means safe
-    filters:
-      - delayed_on: 100ms
-     #Theory: if the beam is uninterrupted (safe) we will get a zero every ~6ms
-     #If we dont get a pulse within 20ms binary sensor will turn on (unsafe!)
+    lambda: |-
+      if (id(pluse_counter_safety1).state > 5000) {
+        return false;
+      } else {
+        // Unsafe; beam blocked or not working
+        return true;
+      }
+
       
   - platform: gpio
     id: garage_door1_state_up
@@ -133,18 +135,18 @@ binary_sensor:
       mode: INPUT_PULLUP
     internal: true
 
-  - platform: gpio
-    pin:
-      number: 33
-      mode: INPUT_PULLUP
+
+  - platform: template
     id: garage_safety2
-    name: Garage Safety Beam (Twin)
+    name: "Garage Safety Beam (Twin)"
     device_class: safety
-    #safety: on means unsafe, off means safe
-    filters:
-      - delayed_on: 50ms
-     #Theory: if the beam is uninterrupted (safe) we will get a zero every ~6ms
-     #If we dont get a pulse within 20ms binary sensor will turn on (unsafe!)
+    lambda: |-
+      if (id(pluse_counter_safety2).state > 5000) {
+        return false;
+      } else {
+        // Unsafe; beam blocked or not working
+        return true;
+      }
       
   - platform: gpio
     id: garage_door2_state_up
@@ -171,6 +173,9 @@ binary_sensor:
 
   - platform: template
     name: "Garage Doors"
+    device_class: garage_door
+    #device_class: opening
+    
     lambda: |-
       if (id(garage_door1_state_down).state && id(garage_door2_state_down).state ) {
         return false;
