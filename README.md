@@ -49,6 +49,7 @@ Static IPs for hardwired Raspberry ETH MAC
             - Amazon Ring Doorbell
             - ChromeCasts
             - Mobile Devices (HomeAssistant)
+            - Roomba [192.168.1.61]
         - ESPHome Garage Doors  (POE)
             - Cover Twin
                 - Sensor Closed Reed Switch 
@@ -72,7 +73,7 @@ Static IPs for hardwired Raspberry ETH MAC
                     - Washer On/Off
             - Doors Reed Switches: Exterior, Interior, Exterior Gate 
 
-        - Pentair Pool Ethenet gateway  (POE)
+        - Pentair Pool Ethenet gateway  (POE) [192.168.1.22]
             - ZigBee
                 - Pentair Pool controller
                     - Pool Water Temperature
@@ -84,7 +85,7 @@ Static IPs for hardwired Raspberry ETH MAC
                     - SPA Thermostat
                     - (Pool Thermostat)
 
-        - Rainforest Energy Gateway (POE)
+        - Rainforest Energy Gateway (POE)  [192.168.1.59]
             - Zigbee
                 - SDG&E Electrical Meter
                     - kW grid demand
@@ -92,7 +93,7 @@ Static IPs for hardwired Raspberry ETH MAC
         - SolarEdge Gateway  (POE)
             - Zigbee
                 - SolarEdge Inverter
-        - SolarEdge Inverter Modbus
+        - SolarEdge Inverter Modbus [192.168.1.60]
             - kW,A,Vac,Vdc, ...
         - TV Sony OLED 
         - SoundBar
