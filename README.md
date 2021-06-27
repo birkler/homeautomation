@@ -42,7 +42,7 @@ Static IPs for hardwired Raspberry ETH MAC
 
 
     - ETHERNET
-        - Self - Raspbery Pi 4 (POE)
+        - Self - Raspbery Pi 4 (POE) [192.168.1.52]
         - Unifi Gateway+24Port POE switch
         - WIFI
             - Amazon ECHO
