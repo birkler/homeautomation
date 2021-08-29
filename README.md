@@ -13,6 +13,11 @@
 Port forward ext:443->int:8123
 Static IPs for hardwired Raspberry ETH MAC
 
+duckdns.org
+
+17580montero.com -> birklerhome.duckdns.org
+
+
 
 
 ### Device Tree

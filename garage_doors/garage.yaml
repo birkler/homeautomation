@@ -82,7 +82,7 @@ sensor:
       inverted: true
     internal: yes
     id: pluse_counter_safety1
-    update_interval: 100ms
+    update_interval: 200ms
   - platform: pulse_counter
     pin:
       number: 15
@@ -90,7 +90,7 @@ sensor:
       inverted: true
     internal: yes
     id: pluse_counter_safety2
-    update_interval: 100ms
+    update_interval: 200ms
 
 binary_sensor:
   - platform: status

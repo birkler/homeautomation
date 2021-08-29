@@ -59,6 +59,7 @@ api:
 
 ota:
 
+
 time:
   - platform: homeassistant
     id: global_time
@@ -115,10 +116,19 @@ display:
     address: 0x27
     update_interval: 500ms
     lambda: |-
-      std::string text = id(status_text).state;
-      const char* test_str = text.c_str();
 
-      it.printf("%s",test_str);
+
+      std::string str_auto_status = id(irrigation_status_auto).state;
+      it.printf(0,0,"Irrigation %9s",str_auto_status.c_str());
+
+      std::string time_str = id(irrigation_current_time).state;
+      it.printf(0,1,"%20s",time_str.c_str());
+
+      std::string  text_starttime = id(irrigation_start_time).state;
+      it.printf(0,2,"[%s]%13s",text_starttime.c_str(),"");
+      std::string text_weekdays = id(irrigation_status_weekdays).state;
+      it.printf(0,3,"%20s",text_weekdays.c_str());
+
       //it.printf("Zone 1: %d min",id(global_zone1_duration));
 
 
@@ -302,9 +312,48 @@ sensor:
 
 
 text_sensor:
+
+
   - platform: template
-    name: "Start Time"
+    name: "Irrigation Current Time"
     icon: mdi:clock-outline
+    id: irrigation_current_time
+    lambda: |-
+
+      std::string result{};
+
+      auto time = id(global_time).now();
+      bool time_is_valid = time.is_valid();
+      if (time_is_valid) {
+        int hour = time.hour;
+        int minute = time.minute;
+        int Nmaxlen = 100;
+        result.resize(Nmaxlen);
+        char* ptr = &result.front();
+
+        int len = snprintf(ptr,Nmaxlen,"%02d:%02d",hour,minute);
+        result.resize(len);
+
+      } else {
+        result = "??:??";
+      }
+
+      static std::string prev_value{};
+      bool same = prev_value.compare(result) == 0;
+      prev_value = result;
+
+      if (!same) {
+        return result;
+      } else {
+        return {};
+      }
+    update_interval: 200ms
+
+
+  - platform: template
+    name: "Irrigation Start Time"
+    icon: mdi:clock-outline
+    id: irrigation_start_time
     lambda: |-
       static int prev = -1;
 
@@ -320,79 +369,20 @@ text_sensor:
       } else {
         return {};
       }
-    update_interval: 250ms
+    update_interval: 200ms
+
   - platform: template
-    name: "Status"
-    id: status_text
-    icon: mdi:script-text-outline
+    name: "Irrigation Auto"
+    id: irrigation_status_auto
+    icon: mdi:clock-fast
     update_interval: 200ms
 
     lambda: |-
-        static std::string prev_value{};
-        char week[8];
-        week[0] = id(global_monday_active) > 0 ? 'M' : '_';
-        week[1] = id(global_tuesday_active) > 0 ? 'T' : '_';
-        week[2] = id(global_wednesday_active) > 0 ? 'W' : '_';
-        week[3] = id(global_thursday_active) > 0 ? 'T' : '_';
-        week[4] = id(global_friday_active) > 0 ? 'F' : '_';
-        week[5] = id(global_saturday_active) > 0 ? 'S' : '_';
-        week[6] = id(global_sunday_active) > 0 ? 'S' : '_';
-        week[7] = 0;
-
-        int zones_duration[6] = {
-          id(global_zone1_duration),
-          id(global_zone2_duration),
-          id(global_zone3_duration),
-          id(global_zone4_duration),
-          id(global_zone5_duration),
-          id(global_zone6_duration)
-        };
-
-        int zone_relay[6] = {
-          id(relay_valve_zone1).state,
-          id(relay_valve_zone2).state,
-          id(relay_valve_zone3).state,
-          id(relay_valve_zone4).state,
-          id(relay_valve_zone5).state,
-          id(relay_valve_zone6).state
-        };
-
-
-        char zone_relay_string[7];
-        zone_relay_string[0] = zone_relay[0] ? '1' : '_';
-        zone_relay_string[1] = zone_relay[1] ? '2' : '_';
-        zone_relay_string[2] = zone_relay[2] ? '3' : '_';
-        zone_relay_string[3] = zone_relay[3] ? '4' : '_';
-        zone_relay_string[4] = zone_relay[4] ? '5' : '_';
-        zone_relay_string[5] = zone_relay[5] ? '6' : '_';
-        zone_relay_string[6] = 0;
-
-        std::string result{};
-        int Nmaxlen = 1000;
-        result.resize(Nmaxlen);
-        char* ptr = &result.front();
-
-        char time_str[10];
-        const char* time_str_ptr = time_str;
-
         auto time = id(global_time).now();
         bool time_is_valid = time.is_valid();
-        if (time_is_valid) {
-          int hour = time.hour;
-          int minute = time.minute;
-          snprintf(time_str,sizeof(time_str),"%02d:%02d",hour,minute);
-        } else {
-          time_str_ptr = "??:??";
-        }
-
-
-        int start_hour = id(global_start_hour);
-        int start_minute = (start_hour & 0x1) ? 30 : 0;
-        start_hour >>= 1;
 
         bool is_running = id(global_cycle_active) > 0;
-
-        const char* mode_str = "    ";
+        std::string mode_str{};
         if (!time_is_valid) {
           mode_str = "CLK!";
         } else if (is_running) {
@@ -402,22 +392,73 @@ text_sensor:
         } else {
           mode_str = " OFF";
         }
+        static std::string prev_value{};
+        bool same = prev_value.compare(mode_str) == 0;
+        prev_value = mode_str;
+
+        if (same) {
+          return {};
+        } else {
+          id(the_display).update();
+          return mode_str;
+        }
+
+  - platform: template
+    name: "Irrigation Weekdays Active"
+    id: irrigation_status_weekdays
+    icon: mdi:calendar-week
+    update_interval: 200ms
+
+    lambda: |-
+        char week_bit = 0;
+        week_bit |= id(global_sunday_active) > 0 ? 1<<0 : 0;
+        week_bit |= id(global_monday_active) > 0 ? 1<<1 : 0;
+        week_bit |= id(global_tuesday_active) > 0 ? 1<<2 : 0;
+        week_bit |= id(global_wednesday_active) > 0 ? 1<<3 : 0;
+        week_bit |= id(global_thursday_active) > 0 ? 1<<4 : 0;
+        week_bit |= id(global_friday_active) > 0 ? 1<<5 : 0;
+        week_bit |= id(global_saturday_active) > 0 ? 1<<6 : 0;
+
+        const char* weekday_letter = "SMTWTFS";
 
 
-        int len = snprintf(
-          ptr,
-          Nmaxlen,
-          "Irrigation     %s\n"
-          " %s       %s\n"
-          "[%02d:%02d]    [%s]",
-          mode_str,
-          time_str_ptr, 
-          zone_relay_string,
-          start_hour,start_minute, week
- 
-          );
+        std::string result{};
+        int Nmaxlen = 1000;
+        result.resize(Nmaxlen);
+        char* ptr = &result.front();
 
-        result.resize(len);
+
+        int n = 0;
+        bool prev_bit = false;
+        for (int k=0;k<8;k++) {
+
+           bool bitset = (week_bit & (1<<k)) != 0 ;
+           if (bitset) {
+             if (prev_bit) {
+               ptr[n++] = '-';
+             } else {
+               ptr[n++] = '[';
+             }
+           } else {
+             if (prev_bit) {
+               ptr[n++] = ']';
+             } else {
+               ptr[n++] = ' ';
+             }
+           }
+           ptr[n] = weekday_letter[n / 2];
+           n++;
+           prev_bit = bitset;
+        }
+
+        result.resize(n-1);
+
+
+        int start_hour = id(global_start_hour);
+        int start_minute = (start_hour & 0x1) ? 30 : 0;
+        start_hour >>= 1;
+
+        static std::string prev_value{};
 
         bool same = prev_value.compare(result) == 0;
         prev_value = result;
@@ -428,6 +469,9 @@ text_sensor:
           id(the_display).update();
           return result;
         }
+
+
+
 
 binary_sensor:
   - platform: status
@@ -487,7 +531,7 @@ switch:
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: &interlock_group [relay_valve_zone1, relay_valve_zone2,relay_valve_zone3,relay_valve_zone4,relay_valve_zone5,relay_valve_zone6]
-    interlock_wait_time: 2s
+    interlock_wait_time: 5s
     on_turn_on:
       then:
         - delay: !lambda "return id(global_zone1_duration) * 60 * 1000;"
@@ -506,6 +550,7 @@ switch:
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    interlock_wait_time: 5s
     on_turn_on:
       then:
         - delay: !lambda "return id(global_zone2_duration) * 60 * 1000;"
@@ -524,6 +569,7 @@ switch:
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    interlock_wait_time: 5s
     on_turn_on:
       then:
         - delay: !lambda "return id(global_zone3_duration) * 60 * 1000;"
@@ -542,6 +588,7 @@ switch:
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    interlock_wait_time: 5s    
     on_turn_on:
       then:
         - delay: !lambda "return id(global_zone4_duration) * 60 * 1000;"
@@ -560,6 +607,7 @@ switch:
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    interlock_wait_time: 5s    
     on_turn_on:
       then:
         - delay: !lambda "return id(global_zone5_duration) * 60 * 1000;"
@@ -578,6 +626,7 @@ switch:
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
     interlock: *interlock_group
+    interlock_wait_time: 5s    
     on_turn_on:
       then:
         - delay: !lambda "return id(global_zone6_duration) * 60 * 1000;"
@@ -714,7 +763,7 @@ switch:
     turn_on_action:
       - lambda: |-
           id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone1_duration),20);
+          id(global_zone1_duration) = min(id(global_zone1_duration),30);
 
   - platform: template
     id: irrigation_zone1_duration_minus
@@ -737,7 +786,7 @@ switch:
     turn_on_action:
       - lambda: |-
           id(global_zone2_duration)++;
-          id(global_zone2_duration) = min(id(global_zone2_duration),20);
+          id(global_zone2_duration) = min(id(global_zone2_duration),30);
 
   - platform: template
     id: irrigation_zone2_duration_minus
@@ -759,7 +808,7 @@ switch:
     turn_on_action:
       - lambda: |-
           id(global_zone3_duration)++;
-          id(global_zone3_duration) = min(id(global_zone3_duration),20);
+          id(global_zone3_duration) = min(id(global_zone3_duration),30);
 
   - platform: template
     id: irrigation_zone3_duration_minus
@@ -783,7 +832,7 @@ switch:
     turn_on_action:
       - lambda: |-
           id(global_zone4_duration)++;
-          id(global_zone4_duration) = min(id(global_zone4_duration),20);
+          id(global_zone4_duration) = min(id(global_zone4_duration),30);
 
   - platform: template
     id: irrigation_zone4_duration_minus
@@ -807,7 +856,7 @@ switch:
     turn_on_action:
       - lambda: |-
           id(global_zone5_duration)++;
-          id(global_zone5_duration) = min(id(global_zone5_duration),20);
+          id(global_zone5_duration) = min(id(global_zone5_duration),30);
 
   - platform: template
     id: irrigation_zone5_duration_minus
@@ -831,7 +880,7 @@ switch:
     turn_on_action:
       - lambda: |-
           id(global_zone6_duration)++;
-          id(global_zone6_duration) = min(id(global_zone6_duration),20);
+          id(global_zone6_duration) = min(id(global_zone6_duration),30);
 
   - platform: template
     id: irrigation_zone6_duration_minus
@@ -864,7 +913,7 @@ switch:
       return false;
     turn_on_action:
       - lambda: |-
-          id(global_start_hour) = (id(global_start_hour) - 1) % 48;
+          id(global_start_hour) = (id(global_start_hour) - 1 + 48) % 48;
 
 
 
@@ -876,18 +925,23 @@ script:
       - switch.turn_on: relay_valve_zone1
       - wait_until:
           switch.is_off: relay_valve_zone1
+      - delay: 5s
       - switch.turn_on: relay_valve_zone2
       - wait_until:
           switch.is_off: relay_valve_zone2
+      - delay: 5s
       - switch.turn_on: relay_valve_zone3
       - wait_until:
           switch.is_off: relay_valve_zone3
+      - delay: 5s
       - switch.turn_on: relay_valve_zone4
       - wait_until:
           switch.is_off: relay_valve_zone4
+      - delay: 5s
       - switch.turn_on: relay_valve_zone5
       - wait_until:
           switch.is_off: relay_valve_zone5
+      - delay: 5s
       - switch.turn_on: relay_valve_zone6
       - wait_until:
           switch.is_off: relay_valve_zone6

@@ -112,7 +112,7 @@ sensor:
     sensor: adc_sensor_raw_ct1
     name: "Washer"
     unit_of_measurement: "A"
-    accuracy_decimals: 0
+    accuracy_decimals: 2
     update_interval: 15s
     filters:
       - calibrate_linear:
@@ -125,7 +125,7 @@ sensor:
     sensor: adc_sensor_raw_ct2
     name: "Dryer"
     unit_of_measurement: "A"
-    accuracy_decimals: 0
+    accuracy_decimals: 2
     update_interval: 15s
     filters:
       - calibrate_linear:

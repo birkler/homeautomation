@@ -1,9 +1,28 @@
 
 #https://github.com/hn/jura-coffee-machine
+
+
+substitutions:
+  devicename: coffee_jura_j6
+  friendly_name: Coffee Machine
+  device_description: Jura Coffee Machine in Kitchen
+
 esphome:
-  name: coffee_jura_j6
+  name: $devicename
+  comment: ${device_description}
   platform: ESP32
   board: esp32cam
+  includes:
+    - jura_coffee.h
+
+# Custom component to poll coffee machine counters & status
+custom_component:
+- lambda: |-
+    ESP_LOGD("main","Init custom component for Jura!");
+    auto my_jura = new JuraCoffee(id(uart_bus),id(num_single_espresso),id(num_double_espresso),id(num_coffee),id(num_double_coffee),id(num_clean),id(tray_status),id(tank_status));
+    App.register_component(my_jura);
+    return {my_jura};
+
 
 wifi:
   ssid: "bwlan-q"
@@ -16,8 +35,6 @@ wifi:
 
 captive_portal:
 
-# Enable logging
-logger:
 
 # Enable Home Assistant API
 api:
@@ -25,23 +42,27 @@ api:
 ota:
 
 
-# ESP32-CAM
-esp32_camera:
-  external_clock:
-    pin: GPIO0
-    frequency: 20MHz
-  i2c_pins:
-    sda: GPIO26
-    scl: GPIO27
-  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
-  vsync_pin: GPIO25
-  href_pin: GPIO23
-  pixel_clock_pin: GPIO22
-  power_down_pin: GPIO32
+status_led:
+  pin: GPIO33
 
-  name: Kitchen
-  resolution: 640x480
-  jpeg_quality: 25
+
+# ESP32-CAM
+#esp32_camera:
+#  external_clock:
+#    pin: GPIO0
+#    frequency: 20MHz
+#  i2c_pins:
+#    sda: GPIO26
+#    scl: GPIO27
+#  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
+#  vsync_pin: GPIO25
+#  href_pin: GPIO23
+#  pixel_clock_pin: GPIO22
+#  power_down_pin: GPIO32
+
+#  name: Kitchen
+#  resolution: 640x480
+#  jpeg_quality: 25
 
   # ... Frame Settings
 
@@ -53,23 +74,157 @@ output:
 light:
   - platform: binary
     output: gpio_4
-    name: $hostname light
+    name: Flash light
 
+
+time:
+  - platform: homeassistant
+    id: global_time
+
+
+#enable logging but disable on UART
+logger:
+  level: VERBOSE
+
+# Enable Home Assistant API & OTA Updates
+
+uart:
+  tx_pin: GPIO13
+  rx_pin: GPIO12
+  baud_rate: 9600
+  id: uart_bus
+
+# UART bytes below have been generated with generate_esphome_jura_yaml.py
+# Tested with a Jura Impressa J6
+
+switch:
+  - platform: template
+    name: 'Coffee Machine'
+    icon: "mdi:coffee-maker"
+    id: jura_on_off_switch
+    turn_on_action:
+      - uart.write: [0xDF, 0xDB, 0xDB, 0xDF]  ## 'A'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFF, 0xDB, 0xDF]  ## 'N'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xFF, 0xDB]  ## ':'
+      - delay: 8ms
+      - uart.write: [0xDB, 0xDB, 0xFF, 0xDB]  ## '0'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xDB, 0xFF, 0xDB]  ## '1'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xFF, 0xDB, 0xDB]  ## '\r'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xDB, 0xDB]  ## '\n'
+
+    turn_off_action:
+      - uart.write: [0xDF, 0xDB, 0xDB, 0xDF]  ## 'A'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFF, 0xDB, 0xDF]  ## 'N'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xFF, 0xDB]  ## ':'
+      - delay: 8ms
+      - uart.write: [0xDB, 0xDB, 0xFF, 0xDB]  ## '0'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xDB, 0xFF, 0xDB]  ## '2'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xFF, 0xDB, 0xDB]  ## '\r'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xDB, 0xDB]  ## '\n'
+    optimistic: true
+    assumed_state: true
+
+  - platform: template
+    name: 'Make Hot Water'
+    icon: "mdi:cup-water"
+    id: jura_make_hot_water
+    turn_on_action:
+      - uart.write: [0xFB, 0xDF, 0xDB, 0xDF]  ## 'F'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xDB, 0xDB, 0xDF]  ## 'A'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xFF, 0xDB]  ## ':'
+      - delay: 8ms
+      - uart.write: [0xDB, 0xDB, 0xFF, 0xDB]  ## '0'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xDF, 0xFF, 0xDB]  ## '6'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xFF, 0xDB, 0xDB]  ## '\r'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xDB, 0xDB]  ## '\n'
+
+  - platform: template
+    name: 'Make Coffee'
+    icon: "mdi:coffee"
+    id: jura_make_coffee
+    turn_on_action:
+      - uart.write: [0xFB, 0xDF, 0xDB, 0xDF]  ## 'F'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xDB, 0xDB, 0xDF]  ## 'A'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xFF, 0xDB]  ## ':'
+      - delay: 8ms
+      - uart.write: [0xDB, 0xDB, 0xFF, 0xDB]  ## '0'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xFB, 0xFF, 0xDB]  ## '9'
+      - delay: 8ms
+      - uart.write: [0xDF, 0xFF, 0xDB, 0xDB]  ## '\r'
+      - delay: 8ms
+      - uart.write: [0xFB, 0xFB, 0xDB, 0xDB]  ## '\n'
 
 sensor:
-  - platform: ultrasonic
-    timeout: 3m
-    trigger_pin: 15
-    echo_pin: 14
-    name: "Distance 1"
-    update_interval: 2s
-  - platform: ultrasonic
-    timeout: 3m
-    trigger_pin: 12
-    echo_pin: 13
-    name: "Distance 2"
-    update_interval: 2s
+  - platform: uptime
+    name: "${friendly_name} Uptime"
 
+  - platform: wifi_signal
+    name: "${friendly_name} WiFi Signal"
+    update_interval: 60s
 
+  - platform: template
+    id: num_single_espresso
+    name: "Single Espressos Made"
+    accuracy_decimals: 0
+    lambda: "return {};"
 
+  - platform: template
+    id: num_double_espresso
+    name: "Double Espressos Made"
+    accuracy_decimals: 0
+    lambda: "return {};"
+
+  - platform: template
+    id: num_coffee
+    name: "Coffees Made"
+    accuracy_decimals: 0
+    lambda: "return {};"
+
+  - platform: template
+    id: num_double_coffee
+    name: "Double Coffees Made"
+    accuracy_decimals: 0
+    lambda: "return {};"
+
+  - platform: template
+    id: num_clean
+    name: "Cleanings Performed"
+    accuracy_decimals: 0
+    lambda: "return {};"
+
+text_sensor:
+  - platform: version
+    name: "${friendly_name} ESPHome version"
+    
+  - platform: template
+    id: tray_status
+    name: "Tray Status"
+    lambda: "return {};"
+    
+  - platform: template
+    id: tank_status
+    name: "Water Tank Status"
+    lambda: "return {};"
+
+binary_sensor:
+  - platform: status
+    name: "${friendly_name} Status"
 

@@ -1,0 +1,168 @@
+#
+#
+# INPUT: Temperate Exterior
+# INPUT: Temperature Interiorr
+# INPUT: Temperature HVAC out
+# INPUT: Temperature Floor
+# INPUT: Cooling Requested
+# INPUT: Heat Requested
+# INPUT: Cooling Requested Stage 2
+# INPUT: Heat Requested  Stage 2
+# INPUT: Damper Closed
+# INPUT: Damper Opened
+# OUTPUT: Cooling Inhibit
+# OUTPUT: Heating Inhibit
+# OUTPUT: Damper Motor On
+# OUTPUT: Damper Motor Direction
+# 
+# 
+# 
+
+#
+#                        fresh_air
+#                       | 
+# [fresh_air_intake] ===o=====   - fully_opened_switch
+#                            |                                               conditioned_air
+#                           \ /                                              |
+#        damper_motor -      o>====[Filter]====[FAN}====[Furnace+]====[AC-]==o==[House]
+#                           / \
+#                            |
+# [inside_intake] ======o====+   - fully_closed_switch
+#                       |
+#                        inside_air
+#
+#
+esphome:
+  name: fresh_air_controller
+  platform: ESP32
+  board: esp32-gateway
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+wifi:
+  ssid: "bwlan-q"
+  password: "lianabirkler"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Freshaircontroller"
+    password: "l7sRgxEASkWi"
+
+captive_portal:
+
+
+
+globals:
+   - id: global_fresh_air_damper_position
+     type: int
+     restore_value: no
+     initial_value: '-1'
+
+binary_sensor:
+  - platform: status
+    name: "Fresh Air Controller"
+  - platform: gpio
+    id: fresh_air_damper_fully_opened_switch
+    pin: GPIO23
+  - platform: gpio
+    id: fresh_air_damper_fully_closed_switch
+    pin: GPIO24
+
+
+sensor:
+  - platform: dht
+    pin: 14
+    model: AM2302
+    temperature:
+      name: "Fresh Air Temperature"
+    humidity:
+      name: "Fresh Air Humidity"
+    update_interval: 120s
+  - platform: dht
+    pin: 15
+    model: AM2302
+    temperature:
+      name: "Inside Air Temperature"
+    humidity:
+      name: "Inside Air Humidity"
+    update_interval: 120s
+  - platform: dht
+    pin: 16
+    model: AM2302
+    temperature:
+      name: "Conditioned Air Temperature"
+    humidity:
+      name: "Conditioned Air Humidity"
+    update_interval: 120s
+
+switch:
+  - platform: gpio
+    pin: 
+    name: "Fresh Air Damper Open"
+    id: fresh_air_damper_motor_open_switch
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: &interlock_group [fresh_air_damper_motor_open_switch, fresh_air_damper_motor_close_switch]
+    interlock_wait_time: 20s
+    on_turn_on:
+      then:
+        - delay: !lambda "return 60 * 1000;"
+        - switch.turn_off: fresh_air_damper_motor_open_switch
+  - platform: gpio
+    pin: 
+    name: "Fresh Air Damper Close"
+    id: fresh_air_damper_motor_close_switch
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+    interlock_wait_time: 20s
+    on_turn_on:
+      then:
+        - delay: !lambda "return 60 * 1000;"
+        - switch.turn_off: fresh_air_damper_motor_close_switch
+
+cover:
+  - platform: template
+    id: fresh_air_damper
+    name: Fresh Air Damper
+    device_class: damper
+    lambda: |-
+      if (id(top_end_stop).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    open_action:
+      - switch.turn_on: fresh_air_damper_motor_open_switch
+    close_action:
+      - switch.turn_on: fresh_air_damper_motor_close_switch
+    stop_action:
+      - switch.turn_off: fresh_air_damper_motor_open_switch
+      - switch.turn_off: fresh_air_damper_motor_close_switch
+    optimistic: true
+    has_position: true
+
+
+
+
+
+
+
+
+

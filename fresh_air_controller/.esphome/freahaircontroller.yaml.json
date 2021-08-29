@@ -1,0 +1,14 @@
+{
+  "storage_version": 1,
+  "name": "freshaircontroller",
+  "comment": null,
+  "esphome_version": "1.20.0",
+  "src_version": 1,
+  "arduino_version": null,
+  "address": "freshaircontroller.local",
+  "esp_platform": "ESP32",
+  "board": "featheresp32",
+  "build_path": null,
+  "firmware_bin_path": null,
+  "loaded_integrations": []
+}
