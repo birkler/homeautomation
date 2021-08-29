@@ -47,13 +47,14 @@ duckdns.org
 
 
     - ETHERNET
-        - Self - Raspbery Pi 4 (POE)
+        - Self - Raspbery Pi 4 (POE) [192.168.1.52]
         - Unifi Gateway+24Port POE switch
         - WIFI
             - Amazon ECHO
             - Amazon Ring Doorbell
             - ChromeCasts
             - Mobile Devices (HomeAssistant)
+            - Roomba [192.168.1.61]
         - ESPHome Garage Doors  (POE)
             - Cover Twin
                 - Sensor Closed Reed Switch 
@@ -77,7 +78,7 @@ duckdns.org
                     - Washer On/Off
             - Doors Reed Switches: Exterior, Interior, Exterior Gate 
 
-        - Pentair Pool Ethenet gateway  (POE)
+        - Pentair Pool Ethenet gateway  (POE) [192.168.1.22]
             - ZigBee
                 - Pentair Pool controller
                     - Pool Water Temperature
@@ -89,7 +90,7 @@ duckdns.org
                     - SPA Thermostat
                     - (Pool Thermostat)
 
-        - Rainforest Energy Gateway (POE)
+        - Rainforest Energy Gateway (POE)  [192.168.1.59]
             - Zigbee
                 - SDG&E Electrical Meter
                     - kW grid demand
@@ -97,7 +98,7 @@ duckdns.org
         - SolarEdge Gateway  (POE)
             - Zigbee
                 - SolarEdge Inverter
-        - SolarEdge Inverter Modbus
+        - SolarEdge Inverter Modbus [192.168.1.60]
             - kW,A,Vac,Vdc, ...
         - TV Sony OLED 
         - SoundBar
