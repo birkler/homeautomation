@@ -178,37 +178,198 @@ globals:
    - id: global_zone1_duration
      type: int
      restore_value: yes
-     initial_value: '1'
+     initial_value: '0'
 
    - id: global_zone2_duration
      type: int
      restore_value: yes
-     initial_value: '1'
+     initial_value: '0'
 
    - id: global_zone3_duration
      type: int
      restore_value: yes
-     initial_value: '1'
+     initial_value: '0'
 
    - id: global_zone4_duration
      type: int
      restore_value: yes
-     initial_value: '1'
+     initial_value: '0'
 
    - id: global_zone5_duration
      type: int
      restore_value: yes
-     initial_value: '1'
+     initial_value: '0'
 
    - id: global_zone6_duration
      type: int
      restore_value: yes
-     initial_value: '1'
+     initial_value: '0'
 
    - id: global_start_hour
      type: int
      restore_value: yes
-     initial_value: '20'
+     initial_value: '14'
+
+
+select:
+  - platform: template
+    id: zone1_duration_select
+    name: "Zone 1"
+    update_interval: 1s
+    restore_value: true
+    initial_option: "Off"
+    icon: mdi:timer-outline
+    on_value:
+      then:
+        lambda: !lambda |- 
+          int val = 0;
+          sscanf(x.c_str(),"%d",&val);
+          id(global_zone1_duration) = val;
+    options:
+      - "Off"
+      - "1 min"
+      - "2 min"
+      - "4 min"
+      - "6 min"
+      - "8 min"
+      - "10 min"
+      - "15 min"
+      - "20 min"
+      - "30 min"
+    optimistic: true
+
+
+  - platform: template
+    id: zone2_duration_select
+    name: "Zone 2"
+    update_interval: 1s
+    restore_value: true
+    initial_option: "Off"
+    icon: mdi:timer-outline
+    on_value:
+      then:
+        lambda: !lambda |- 
+          int val = 0;
+          sscanf(x.c_str(),"%d",&val);
+          id(global_zone2_duration) = val;
+    options:
+      - "Off"
+      - "1 min"
+      - "2 min"
+      - "4 min"
+      - "6 min"
+      - "8 min"
+      - "10 min"
+      - "15 min"
+      - "20 min"
+      - "30 min"
+    optimistic: true
+
+  - platform: template
+    id: zone3_duration_select
+    name: "Zone 3"
+    update_interval: 1s
+    restore_value: true
+    initial_option: "Off"
+    icon: mdi:timer-outline
+    on_value:
+      then:
+        lambda: !lambda |- 
+          int val = 0;
+          sscanf(x.c_str(),"%d",&val);
+          id(global_zone3_duration) = val;
+    options:
+      - "Off"
+      - "1 min"
+      - "2 min"
+      - "4 min"
+      - "6 min"
+      - "8 min"
+      - "10 min"
+      - "15 min"
+      - "20 min"
+      - "30 min"
+    optimistic: true
+
+
+  - platform: template
+    id: zone4_duration_select
+    name: "Zone 4"
+    update_interval: 1s
+    restore_value: true
+    initial_option: "Off"
+    icon: mdi:timer-outline
+    on_value:
+      then:
+        lambda: !lambda |- 
+          int val = 0;
+          sscanf(x.c_str(),"%d",&val);
+          id(global_zone4_duration) = val;
+    options:
+      - "Off"
+      - "1 min"
+      - "2 min"
+      - "4 min"
+      - "6 min"
+      - "8 min"
+      - "10 min"
+      - "15 min"
+      - "20 min"
+      - "30 min"
+    optimistic: true
+
+
+  - platform: template
+    id: zone5_duration_select
+    name: "Zone 5"
+    update_interval: 1s
+    restore_value: true
+    initial_option: "Off"
+    icon: mdi:timer-outline
+    on_value:
+      then:
+        lambda: !lambda |- 
+          int val = 0;
+          sscanf(x.c_str(),"%d",&val);
+          id(global_zone5_duration) = val;
+    options:
+      - "Off"
+      - "1 min"
+      - "2 min"
+      - "4 min"
+      - "6 min"
+      - "8 min"
+      - "10 min"
+      - "15 min"
+      - "20 min"
+      - "30 min"
+    optimistic: true
+
+  - platform: template
+    id: zone6_duration_select
+    name: "Zone 6"
+    update_interval: 1s
+    restore_value: true
+    initial_option: "Off"
+    icon: mdi:timer-outline
+    on_value:
+      then:
+        lambda: !lambda |- 
+          int val = 0;
+          sscanf(x.c_str(),"%d",&val);
+          id(global_zone6_duration) = val;
+    options:
+      - "Off"
+      - "1 min"
+      - "2 min"
+      - "4 min"
+      - "6 min"
+      - "8 min"
+      - "10 min"
+      - "15 min"
+      - "20 min"
+      - "30 min"
+    optimistic: true
 
 
 
@@ -222,96 +383,36 @@ sensor:
       name: "Garage Humidity"
     update_interval: 120s
 
-  - platform: template
-    name: "Zone 1"
-    icon: mdi:timer-outline
-    unit_of_measurement: min
-    accuracy_decimals: 0
-    lambda: |-
-      static int prev = -1;
-      if (prev != id(global_zone1_duration)) {
-        prev = id(global_zone1_duration);
-        return id(global_zone1_duration);
-      } else {
-        return {};
-      }
-    update_interval: 250ms
-  - platform: template
-    name: "Zone 2"
-    icon: mdi:timer-outline
-    unit_of_measurement: min
-    accuracy_decimals: 0
-    lambda: |-
-      static int prev = -1;
-      if (prev != id(global_zone2_duration)) {
-        prev = id(global_zone2_duration);
-        return id(global_zone2_duration);
-      } else {
-        return {};
-      }
-    update_interval: 250ms
-  - platform: template
-    name: "Zone 3"
-    icon: mdi:timer-outline
-    unit_of_measurement: min
-    accuracy_decimals: 0
-    lambda: |-
-      static int prev = -1;
-      if (prev != id(global_zone3_duration)) {
-        prev = id(global_zone3_duration);
-        return id(global_zone3_duration);
-      } else {
-        return {};
-      }
-    update_interval: 250ms
-  - platform: template
-    name: "Zone 4"
-    icon: mdi:timer-outline
-    unit_of_measurement: min
-    accuracy_decimals: 0
-    lambda: |-
-      static int prev = -1;
-      if (prev != id(global_zone4_duration)) {
-        prev = id(global_zone4_duration);
-        return id(global_zone4_duration);
-      } else {
-        return {};
-      }
-    update_interval: 250ms
-  - platform: template
-    name: "Zone 5"
-    icon: mdi:timer-outline
-    unit_of_measurement: min
-    accuracy_decimals: 0
-    lambda: |-
-      static int prev = -1;
-      if (prev != id(global_zone5_duration)) {
-        prev = id(global_zone5_duration);
-        return id(global_zone5_duration);
-      } else {
-        return {};
-      }
-    update_interval: 250ms
-  - platform: template
-    name: "Zone 6"
-    icon: mdi:timer-outline
-    unit_of_measurement: min
-    accuracy_decimals: 0
-    lambda: |-
-      static int prev = -1;
-      if (prev != id(global_zone6_duration)) {
-        prev = id(global_zone6_duration);
-        return id(global_zone6_duration);
-      } else {
-        return {};
-      }
-
-
-    update_interval: 250ms
 
 
 
 text_sensor:
+  - platform: template
+    name: "Zone Durations"
+    icon: mdi:timer-outline
+    lambda: |-
+      static std::string prev = "";
+      std::string res;
+      res.resize(256,' ');
+      int len = sprintf((char *)res.data(),"%d+%d+%d+%d+%d+%d min",
+        id(global_zone1_duration),
+        id(global_zone2_duration),
+        id(global_zone3_duration),
+        id(global_zone4_duration),
+        id(global_zone5_duration),
+        id(global_zone6_duration));
+
+      res.resize(len);
+
+      bool same = prev.compare(res) == 0;
+      prev = res;
+      
+      if (same) {
+        return {};
+      } else {
+        return res;
+      }
+    update_interval: 250ms
 
 
   - platform: template
@@ -753,145 +854,6 @@ switch:
     turn_off_action:
       - lambda: |-
           id(global_sunday_active) = 0;
-
-  - platform: template
-    id: irrigation_zone1_duration_plus
-    name: "Zone1 Plus"
-    icon: mdi:plus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone1_duration)++;
-          id(global_zone1_duration) = min(id(global_zone1_duration),30);
-
-  - platform: template
-    id: irrigation_zone1_duration_minus
-    name: "Zone1 Minus"
-    icon: mdi:minus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone1_duration)--;
-          id(global_zone1_duration) = max(id(global_zone1_duration),0);
-
-
-  - platform: template
-    id: irrigation_zone2_duration_plus
-    name: "Zone2 Plus"
-    icon: mdi:plus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone2_duration)++;
-          id(global_zone2_duration) = min(id(global_zone2_duration),30);
-
-  - platform: template
-    id: irrigation_zone2_duration_minus
-    name: "Zone2 Minus"
-    icon: mdi:minus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone2_duration)--;
-          id(global_zone2_duration) = max(id(global_zone2_duration),0);
-
-  - platform: template
-    id: irrigation_zone3_duration_plus
-    name: "Zone3 Plus"
-    icon: mdi:plus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone3_duration)++;
-          id(global_zone3_duration) = min(id(global_zone3_duration),30);
-
-  - platform: template
-    id: irrigation_zone3_duration_minus
-    name: "Zone3 Minus"
-    icon: mdi:minus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone3_duration)--;
-          id(global_zone3_duration) = max(id(global_zone3_duration),0);
-
-
-
-  - platform: template
-    id: irrigation_zone4_duration_plus
-    name: "Zone4 Plus"
-    icon: mdi:plus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone4_duration)++;
-          id(global_zone4_duration) = min(id(global_zone4_duration),30);
-
-  - platform: template
-    id: irrigation_zone4_duration_minus
-    name: "Zone4 Minus"
-    icon: mdi:minus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone4_duration)--;
-          id(global_zone4_duration) = max(id(global_zone4_duration),0);
-
-
-
-  - platform: template
-    id: irrigation_zone5_duration_plus
-    name: "Zone5 Plus"
-    icon: mdi:plus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone5_duration)++;
-          id(global_zone5_duration) = min(id(global_zone5_duration),30);
-
-  - platform: template
-    id: irrigation_zone5_duration_minus
-    name: "Zone5 Minus"
-    icon: mdi:minus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone5_duration)--;
-          id(global_zone5_duration) = max(id(global_zone5_duration),0);
-
-
-
-  - platform: template
-    id: irrigation_zone6_duration_plus
-    name: "Zone6 Plus"
-    icon: mdi:plus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone6_duration)++;
-          id(global_zone6_duration) = min(id(global_zone6_duration),30);
-
-  - platform: template
-    id: irrigation_zone6_duration_minus
-    name: "Zone6 Minus"
-    icon: mdi:minus-box-outline
-    lambda: |-
-      return false;
-    turn_on_action:
-      - lambda: |-
-          id(global_zone6_duration)--;
-          id(global_zone6_duration) = max(id(global_zone6_duration),0);
 
 
 
