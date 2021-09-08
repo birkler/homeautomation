@@ -17,7 +17,6 @@
 # 
 # 
 # 
-
 #
 #                        fresh_air
 #                       | 
@@ -31,9 +30,9 @@
 #                       |
 #                        inside_air
 #
-#
+
 esphome:
-  name: fresh_air_controller
+  name: hvac-fresh-air-controller
   platform: ESP32
   board: esp32-gateway
 
@@ -55,17 +54,27 @@ api:
 ota:
 
 
-wifi:
-  ssid: "bwlan-q"
-  password: "lianabirkler"
+#wifi:
+#  ssid: "bwlan-q"
+#  password: "lianabirkler"
 
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Freshaircontroller"
-    password: "l7sRgxEASkWi"
+#  # Enable fallback hotspot (captive portal) in case wifi connection fails
+#  ap:
+#    ssid: "Freshaircontroller"
+#    password: "l7sRgxEASkWi"
 
-captive_portal:
 
+i2c:
+  sda: 14
+  scl: 13
+  scan: True
+  frequency: 100kHz
+  id: bus_a
+
+pcf8574:
+  - id: 'pcf8574_hub'
+    address: 0x24
+    pcf8575: False
 
 
 globals:
@@ -77,17 +86,94 @@ globals:
 binary_sensor:
   - platform: status
     name: "Fresh Air Controller"
+  
+
   - platform: gpio
-    id: fresh_air_damper_fully_opened_switch
-    pin: GPIO23
+    id: call_cool_stage1
+    pin:
+      number: GPIO16
+      inverted: true
+      mode: INPUT_PULLUP
+
   - platform: gpio
-    id: fresh_air_damper_fully_closed_switch
-    pin: GPIO24
+    id: call_cool_stage2
+    pin:
+      number: GPIO32
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    id: call_heat_stage1
+    pin:
+      number: GPIO36
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    id: call_heat_stage2
+    pin:
+      number: GPIO16
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    id: call_fan_on
+    pin:
+      number: GPIO35
+      inverted: true
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    id: damper_fully_opened_switch
+    pin: 
+      pcf8574: pcf8574_hub
+      number: 7
+      mode: INPUT
+
+    on_press:
+      then:
+        - switch.turn_off: damper_motor_open_switch
+
+  - platform: gpio
+    id: damper_fully_closed_switch
+    pin: 
+      pcf8574: pcf8574_hub
+      number: 6
+      mode: INPUT
+    on_press:
+      then:
+        - switch.turn_off: damper_motor_close_switch
 
 
 sensor:
+  # Example source sensor
+  - platform: adc
+    pin: GPIO39
+    id: adc_sensor_raw_ct1
+    attenuation: 6dB
+    internal: True
+
+  - platform: ct_clamp
+    id: adc_sensor_current_transformer
+    sensor: adc_sensor_raw_ct1
+    name: "Current HVAC"
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    update_interval: 15s
+    filters:
+      - calibrate_linear:
+          # Measured value of 0 maps to 0A
+          - 0 -> 0
+          - 0.78 -> 9.6
+
+
+
+
+
   - platform: dht
-    pin: 14
+    pin: 
+      number: GPIO02
+      mode: INPUT_PULLUP
     model: AM2302
     temperature:
       name: "Fresh Air Temperature"
@@ -95,7 +181,9 @@ sensor:
       name: "Fresh Air Humidity"
     update_interval: 120s
   - platform: dht
-    pin: 15
+    pin: 
+      number: GPIO04
+      mode: INPUT_PULLUP
     model: AM2302
     temperature:
       name: "Inside Air Temperature"
@@ -103,7 +191,9 @@ sensor:
       name: "Inside Air Humidity"
     update_interval: 120s
   - platform: dht
-    pin: 16
+    pin: 
+      number: GPIO12
+      mode: INPUT_PULLUP
     model: AM2302
     temperature:
       name: "Conditioned Air Temperature"
@@ -114,28 +204,65 @@ sensor:
 switch:
   - platform: gpio
     pin: 
-    name: "Fresh Air Damper Open"
-    id: fresh_air_damper_motor_open_switch
+      pcf8574: pcf8574_hub
+      number: 7
+      mode: OUTPUT
+    name: "Damper Open"
+    id: damper_motor_open_switch
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
-    interlock: &interlock_group [fresh_air_damper_motor_open_switch, fresh_air_damper_motor_close_switch]
-    interlock_wait_time: 20s
+    interlock: &damper_motor_interlock_group [damper_motor_open_switch, damper_motor_close_switch]
+    interlock_wait_time: 2s
     on_turn_on:
       then:
-        - delay: !lambda "return 60 * 1000;"
-        - switch.turn_off: fresh_air_damper_motor_open_switch
+        - delay: 60s
+        - switch.turn_off: damper_motor_open_switch
+
   - platform: gpio
     pin: 
-    name: "Fresh Air Damper Close"
-    id: fresh_air_damper_motor_close_switch
+      pcf8574: pcf8574_hub
+      number: 6
+      mode: OUTPUT
+    name: "Damper Close"
+    id: damper_motor_close_switch
     icon: mdi:valve
     restore_mode: ALWAYS_OFF
-    interlock: *interlock_group
-    interlock_wait_time: 20s
+    interlock: *damper_motor_interlock_group
+    interlock_wait_time: 2s
     on_turn_on:
       then:
-        - delay: !lambda "return 60 * 1000;"
-        - switch.turn_off: fresh_air_damper_motor_close_switch
+        - delay: 60s
+        - switch.turn_off: damper_motor_close_switch
+
+  - platform: gpio
+    pin: 
+      pcf8574: pcf8574_hub
+      number: 5
+      mode: OUTPUT
+    name: "Cooling Inhibit"
+    id: cooling_compressor_inhibit
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    pin: 
+      pcf8574: pcf8574_hub
+      number: 4
+      mode: OUTPUT
+    name: "Heating Inhibit"
+    id: heating_inhibit
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    pin: 
+      pcf8574: pcf8574_hub
+      number: 3
+      mode: OUTPUT
+    name: "Fan Force On"
+    id: fan_force_on
+    icon: mdi:valve
+    restore_mode: ALWAYS_OFF
 
 cover:
   - platform: template
@@ -143,24 +270,22 @@ cover:
     name: Fresh Air Damper
     device_class: damper
     lambda: |-
-      if (id(top_end_stop).state) {
+      if (id(damper_fully_opened_switch).state) {
         return COVER_OPEN;
-      } else {
+      } else if (id(damper_fully_closed_switch).state) {
         return COVER_CLOSED;
+      } else {
+        return 0.5;
       }
     open_action:
-      - switch.turn_on: fresh_air_damper_motor_open_switch
+      - switch.turn_on: damper_motor_open_switch
     close_action:
-      - switch.turn_on: fresh_air_damper_motor_close_switch
+      - switch.turn_on: damper_motor_close_switch
     stop_action:
-      - switch.turn_off: fresh_air_damper_motor_open_switch
-      - switch.turn_off: fresh_air_damper_motor_close_switch
+      - switch.turn_off: damper_motor_close_switch
+      - switch.turn_off: damper_motor_close_switch
     optimistic: true
     has_position: true
-
-
-
-
 
 
 
