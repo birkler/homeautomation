@@ -1,0 +1,25 @@
+esphome:
+  name: bbq_monitor
+  platform: ESP32
+  board: tinypico
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  password: ""
+
+wifi:
+  ssid: "bwlan-q"
+  password: "lianabirkler"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Bbq Monitor Fallback Hotspot"
+    password: "tL8HIyu5NIA6"
+
+captive_portal:

@@ -73,7 +73,7 @@ i2c:
 
 pcf8574:
   - id: 'pcf8574_hub'
-    address: 0x24
+    address: 0x20
     pcf8575: False
 
 
@@ -169,43 +169,12 @@ sensor:
 
 
 
-
-  - platform: dht
-    pin: 
-      number: GPIO02
-      mode: INPUT_PULLUP
-    model: AM2302
-    temperature:
-      name: "Fresh Air Temperature"
-    humidity:
-      name: "Fresh Air Humidity"
-    update_interval: 120s
-  - platform: dht
-    pin: 
-      number: GPIO04
-      mode: INPUT_PULLUP
-    model: AM2302
-    temperature:
-      name: "Inside Air Temperature"
-    humidity:
-      name: "Inside Air Humidity"
-    update_interval: 120s
-  - platform: dht
-    pin: 
-      number: GPIO12
-      mode: INPUT_PULLUP
-    model: AM2302
-    temperature:
-      name: "Conditioned Air Temperature"
-    humidity:
-      name: "Conditioned Air Humidity"
-    update_interval: 120s
-
 switch:
   - platform: gpio
     pin: 
       pcf8574: pcf8574_hub
       number: 7
+      inverted: true
       mode: OUTPUT
     name: "Damper Open"
     id: damper_motor_open_switch
@@ -222,6 +191,7 @@ switch:
     pin: 
       pcf8574: pcf8574_hub
       number: 6
+      inverted: true
       mode: OUTPUT
     name: "Damper Close"
     id: damper_motor_close_switch
@@ -238,6 +208,7 @@ switch:
     pin: 
       pcf8574: pcf8574_hub
       number: 5
+      inverted: true
       mode: OUTPUT
     name: "Cooling Inhibit"
     id: cooling_compressor_inhibit
@@ -248,6 +219,7 @@ switch:
     pin: 
       pcf8574: pcf8574_hub
       number: 4
+      inverted: true
       mode: OUTPUT
     name: "Heating Inhibit"
     id: heating_inhibit
@@ -258,6 +230,7 @@ switch:
     pin: 
       pcf8574: pcf8574_hub
       number: 3
+      inverted: true
       mode: OUTPUT
     name: "Fan Force On"
     id: fan_force_on

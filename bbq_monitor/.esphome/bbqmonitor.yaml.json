@@ -1,0 +1,14 @@
+{
+  "storage_version": 1,
+  "name": "bbq_monitor",
+  "comment": null,
+  "esphome_version": "2021.8.2",
+  "src_version": 1,
+  "arduino_version": null,
+  "address": "bbq_monitor.local",
+  "esp_platform": "ESP32",
+  "board": "tinypico",
+  "build_path": null,
+  "firmware_bin_path": null,
+  "loaded_integrations": []
+}
