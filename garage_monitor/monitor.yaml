@@ -1,61 +1,51 @@
-# pip3 install esphome
-# Use esp32-poe-iso
-#
-
-#
-# CT = Current Transformer
-#                          +-------------------+
-#                          |    ETHERNET       |
-#                          |                   |
-#                          |                   |
-#                          |                   |
-#                          | GPIO13     GPIO5  | x
-#                          | GPIO14     GPIO4  | x
-#                          | GPIO15     GPIO3  | x
-#                          | GPIO16     GPIO2  |
-#                          | GPIO32     GPIO1  |
-#                          | GPIO33     GPIO0  |
-#                          | GPIO34    ESP_EN  |
-#                       x  | GPIO35       GND  | x 
-#                       x  | GPIO36       3V3  | x
-#                          | GPIO39        5V  |
-#                          |                   |
-#                          |                   |
-#                          |                   |
-#                          |                   |
-#                          |    ANTENNA        |
-#                          +-------------------+
-#
-#          +-------------------+
-#          |     ANTENNA       |
-#          |                   |
-#          |                   |
-#          |                   |
-#         o| 5V         GPI39  |o    Vsupp
-#    3V3 -o| 3V3        GPI36  |o    CT2
-#    GND -o| GND        GPI35  |o    CT1
-#         o| ESP_EN     GPI34  |o    (Button1)
-#         o| GPIO0     GPIO33  |o    
-#         o| GPIO1     GPIO32  |o                
-#         o| GPIO2     GPIO16  |o    
-# REED1   o| GPIO3     GPIO15  |o    
-# REED2   o| GPIO4     GPIO14  |o    
-# REED3   o| GPIO5     GPIO13  |o   
-#          |                   |
-#          |                   |
-#          |                   |
-#          |                   |
-#          |    ETHERNET       |
-#          +-------------------+
-
-# PIR
-# DHT22
-# Smoke Alarm TRIGGER
-# Smoke Alarm SENSE
+# Garage monitor:
+# - Current Transformers (CT) to monitor dyer and washer
+# - Garage doors and gate (reed contacts)
+# - Interconnected Smoke Alarm monitoring and horn triggering
+#   Smoke alarms are hardwired with 120VAC and interconnected (with a red wire): 
+#   5VDC is put on the red wire to make all alarms sound the horn when alarms is triggered.
+#   The interconnect is monitored by a RM4 which closes a relay when alarm is sounded
+#   Triggering the smoke alarms from the ESP32 is done by driving a BV0505sw1 galvanic isolated
+#   DC-DC converter with the output connected to Neutral and Red interconnect wire
 # 
+#                                                     | () |  GND
+#           +-------------------+                     |    | 
+#           |     ANTENNA       |                     | () |  REED1
+#           |                   |                     |    |
+#           |                   |                     | () |  REED2
+#           |                   |                     |    |
+#          o| 5V         GPI39  |o    Vsupp           | () |  REED3
+#     3V3 -o| 3V3        GPI36  |o    CT2             |    |
+#     GND -o| GND        GPI35  |o    CT1             | () |  CT1_REF
+#          o| ESP_EN     GPI34  |o    (Button1)       |    |
+# RESERVED o| GPIO0     GPIO33  |o                    | () |  CT2_REF
+# RESERVED o| GPIO1     GPIO32  |o                    |    |
+#          o| GPIO2     GPIO16  |o                    | () |  CT1
+#  REED1   o| GPIO3     GPIO15  |o  smk_alrm_ic_drive |    |
+#  REED2   o| GPIO4     GPIO14  |o  GPIO14            | () |  CT2
+#  REED3   o| GPIO5     GPIO13  |o  Alarm Sense       | -- |
+#           |                   |                     | () |  GND
+#           |                   |                     |    |
+#           |                   |                     | () |  GND
+#           |                   |                     |    |
+#           |    ETHERNET       |                     | () |  +5V
+#           +-------------------+                     |    |
+#                                                     | () | GPIO14
+#                                                     |    |
+#                                                     | () | Smoke Alarm Sense
+#                                                     |    |
+#                                                     | () | Alarm Horn Trigger
+#                                                     |    |
+#                                                     | () | 
+#                                                     |    |
+#                                                     | () | 
+
+#  [2N7000] 
+#     drain-> Alarm Horn Trigger
+#     gate: smk_alrm_ic_drive
+#     source-> GND
 #
-#
-# TIP:create one reference for each current transformer
+# create one reference for each current transformer
 # sharing one common reference caused crosstalk and incorrect readings
 #
 #  3V3 ----[220]---+-----[220]-----GND
@@ -73,16 +63,18 @@
 # CT1 ---[220]----CT1_REF
 # CT2 ---[220]----CT2_REF
 #
-#  (x1) CT1           
-#  (x2) CT2                          
-#  (x3) CT2_REF                           
-#  (x4) CT1_REF                           
-#  (x5) REED1                         
-#  (x6) REED2                          
-#  (x7) REED3
-#  (x8) GND         
 #
 # https://learn.openenergymonitor.org/electricity-monitoring/ct-sensors/yhdc-sct-013-000-ct-sensor-report                
+#
+#
+# In junction box:
+# +---------+  B0505s Bottom View
+# | 1 2 3 4 |  1: GND (Blue) 2: Vin (Yellow)  3: 0V (White) 4: 5V (RED)
+# |         |
+# +---------+
+#
+
+
 
 esphome:
   name: garage_monitor
@@ -105,6 +97,7 @@ logger:
 api:
 
 ota:
+
 
 sensor:
   - platform: ct_clamp
@@ -138,18 +131,21 @@ sensor:
   # Example source sensor
   - platform: adc
 
-    pin: 35
+    pin: 36
     id: adc_sensor_raw_ct1
     attenuation: 6dB
     internal: True
 
   # Example source sensor
   - platform: adc
-    pin: 36
+    pin: 35
     id: adc_sensor_raw_ct2
     attenuation: 6dB
     internal: True
 
+text_sensor:
+  - platform: version
+    name: "Version"
 
 binary_sensor:
   - platform: status
@@ -176,18 +172,22 @@ binary_sensor:
       number: 3
       mode: INPUT_PULLUP
 
-
+  - platform: gpio
+    id: smoke_alarm_interconnect_sense
+    internal: true
+    pin:
+      number: 13
+      inverted: true 
+      mode:
+        input: true
+        pullup: true 
 
   - platform: template
     name: "Dryer"
     #icon: mdi-tumble-dryer
 #    device_class: power
     lambda: |-
-      if (id(adc_sensor_ct2).state > 3.0f) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(adc_sensor_ct2).state > 3.0f;
 
     on_press:
       then:
@@ -197,17 +197,41 @@ binary_sensor:
       then:
         - switch.turn_off: washer_finished_switch
 
+  - platform: template
+    name: "Smoke Alarm"
+    device_class: smoke
+    #icon: mdi:fire
+    lambda: |-
+      if (id(smoke_alarm_interconnect_drive_delayed).state) {
+        //We cannot read interconnect_drivesense when we are forcing horn ON as it will read ON regardless if detectors detected any smoke
+      } else {
+        id(global_smoke_co_triggered) = id(smoke_alarm_interconnect_sense).state > 0 ? 1 : 0;
+      }
+      return id(global_smoke_co_triggered) > 0;
+
+  - platform: template
+    name: "Smoke Drive delayed"
+    id: smoke_alarm_interconnect_drive_delayed
+    icon: mdi:horn
+    internal: true
+    lambda: |-
+      return (id(smoke_alarm_interconnect_drive).state > 0);
+    filters:
+      - delayed_off: 20s
+
+  - platform: template
+    device_class: power
+    name: "Smoke/CO Alarm Power Good"
+    id: smoke_alarm_power_good
+    lambda: |-
+      return (id(global_smoke_co_alarm_power_good) > 0);
 
   - platform: template
     name: "Washer"
 #     device_class: power
 #     icon: mdi-washing-machine
     lambda: |-
-      if (id(adc_sensor_ct1).state > 1.0f) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(adc_sensor_ct1).state > 1.0f;
     on_press:
       then:
         - switch.turn_off: washer_finished_switch
@@ -228,11 +252,38 @@ script:
     then:
       - delay: 240 min
       - switch.turn_off: washer_finished_switch
+  - id: execute_horn
+    mode: restart
+    then:
+      - delay: 1s
+      - while:
+          condition:
+            switch.is_on: interior_alarm_horn
+          then:
+            - switch.turn_on: smoke_alarm_interconnect_drive
+            - delay: 120s
+            - switch.turn_off: smoke_alarm_interconnect_drive
+            - delay: 25s
+      - switch.turn_off: smoke_alarm_interconnect_drive
+
+
 
 
 
 globals:
   - id: washer_finished_switch_state_global
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: global_smoke_co_triggered
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: global_smoke_co_alarm_power_good
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: global_horn_activated
     type: int
     restore_value: no
     initial_value: '0'
@@ -242,11 +293,7 @@ switch:
     id: washer_finished_switch
     name: Washer Finished
     lambda: |-
-      if (id(washer_finished_switch_state_global) > 0) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(washer_finished_switch_state_global) > 0;
     turn_on_action:
       - globals.set:
           id: washer_finished_switch_state_global
@@ -257,5 +304,54 @@ switch:
           value: '0'
 
 
+  - platform: template
+    id: smoke_alarm_test_power_good
+    name: Smoke Alarm Test Power Good
+    icon: mdi:bullhorn
+    lambda: |-
+      return false;
+    turn_on_action:
+      - script.stop: execute_horn
+      - switch.turn_on: smoke_alarm_interconnect_drive
+      - delay: 10ms
+      - lambda: |-
+          id(global_smoke_co_alarm_power_good) = id(smoke_alarm_interconnect_sense).state > 0;
+      - switch.turn_off: smoke_alarm_interconnect_drive
+      - if:
+          condition: 
+            switch.is_on: interior_alarm_horn
+          then:
+            - script.execute: execute_horn
+
+
+  - platform: template
+    id: interior_alarm_horn
+    name: Interior Alarm Horn
+    icon: mdi:bullhorn
+    lambda: |-
+      return id(global_horn_activated) > 0;
+    turn_on_action:
+      - globals.set:
+          id: global_horn_activated
+          value: '1'
+      - script.stop: execute_horn
+      - script.execute: execute_horn
+      - delay: 30min
+      - script.stop: execute_horn
+    turn_off_action:
+      - globals.set:
+          id: global_horn_activated
+          value: '0'
+      - script.stop: execute_horn
+      - switch.turn_off: smoke_alarm_interconnect_drive
+
+  - platform: gpio
+    id: smoke_alarm_interconnect_drive
+    name: Drive Horn
+    icon: mdi:bullhorn
+    internal: true
+    pin: 15
+    inverted: false
+    restore_mode: RESTORE_DEFAULT_OFF
 
 

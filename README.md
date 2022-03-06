@@ -76,7 +76,13 @@ duckdns.org
             - CT-clamp SCT-013-000
                 - Washer Current 
                     - Washer On/Off
-            - Doors Reed Switches: Exterior, Interior, Exterior Gate 
+            - Doors Reed Switches (input):
+                Door Outside,
+                Door Interior
+                Gate Exterior
+
+            - Smoke Alarm Signal (input)
+            - Smoke Alarm Siren Trigger (output)
 
         - Pentair Pool Ethenet gateway  (POE) [192.168.1.22]
             - ZigBee
