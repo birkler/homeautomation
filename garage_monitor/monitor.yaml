@@ -34,16 +34,16 @@
 #                                                     |    |
 #                                                     | () | Smoke Alarm Sense
 #                                                     |    |
-#                                                     | () | Alarm Horn Trigger
+#                                                     | () | 'Alarm Horn Trigger'
 #                                                     |    |
 #                                                     | () | 
 #                                                     |    |
 #                                                     | () | 
 
 #  [2N7000] 
-#     drain-> Alarm Horn Trigger
-#     gate: smk_alrm_ic_drive
-#     source-> GND
+#     drain----> Alarm Horn Trigger
+#     gate----->smk_alrm_ic_drive (GPIO15) ---[100K]----->GND
+#     source---> GND
 #
 # create one reference for each current transformer
 # sharing one common reference caused crosstalk and incorrect readings
@@ -69,7 +69,7 @@
 #
 # In junction box:
 # +---------+  B0505s Bottom View
-# | 1 2 3 4 |  1: GND (Blue) 2: Vin (Yellow)  3: 0V (White) 4: 5V (RED)
+# | 1 2 3 4 |  1: GND (Blue)---> GND 2: Vin (Yellow) ---> 'Alarm Horn Trigger' 3: 0V (White) 4: 5V (RED)
 # |         |
 # +---------+
 #
@@ -181,13 +181,14 @@ binary_sensor:
       mode:
         input: true
         pullup: true 
+    
 
-  - platform: template
+  - platform: analog_threshold
     name: "Dryer"
+    sensor_id: adc_sensor_ct2
     #icon: mdi-tumble-dryer
-#    device_class: power
-    lambda: |-
-      return id(adc_sensor_ct2).state > 3.0f;
+    device_class: power
+    threshold: 3.0
 
     on_press:
       then:
@@ -196,6 +197,21 @@ binary_sensor:
     on_release:
       then:
         - switch.turn_off: washer_finished_switch
+
+  - platform: analog_threshold
+    name: "Washer"
+    device_class: power
+#     icon: mdi-washing-machine
+    sensor_id: adc_sensor_ct1
+    threshold: 1.0
+
+    on_press:
+      then:
+        - switch.turn_off: washer_finished_switch
+    on_release:
+      then:
+        - script.execute: washer_maybe_finished_script
+
 
   - platform: template
     name: "Smoke Alarm"
@@ -225,19 +241,6 @@ binary_sensor:
     id: smoke_alarm_power_good
     lambda: |-
       return (id(global_smoke_co_alarm_power_good) > 0);
-
-  - platform: template
-    name: "Washer"
-#     device_class: power
-#     icon: mdi-washing-machine
-    lambda: |-
-      return id(adc_sensor_ct1).state > 1.0f;
-    on_press:
-      then:
-        - switch.turn_off: washer_finished_switch
-    on_release:
-      then:
-        - script.execute: washer_maybe_finished_script
 
 
 script:

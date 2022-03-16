@@ -89,41 +89,50 @@ binary_sensor:
   
 
   - platform: gpio
+    name: "Cool Stage 1"
     id: call_cool_stage1
+    icon: mdi:snowflake
     pin:
-      number: GPIO16
+      number: GPIO15
       inverted: true
       mode: INPUT_PULLUP
 
   - platform: gpio
+    name: "Cool Stage 2"
     id: call_cool_stage2
+    icon: mdi:snowflake-variant
     pin:
       number: GPIO32
       inverted: true
-      mode: INPUT_PULLUP
 
   - platform: gpio
+    name: "Heat Stage 1"
     id: call_heat_stage1
+    icon: mdi:fire
+
     pin:
       number: GPIO36
       inverted: true
-      mode: INPUT_PULLUP
 
   - platform: gpio
     id: call_heat_stage2
+    icon: mdi:fire-alert
+    name: "Heat Stage 2"
     pin:
       number: GPIO16
       inverted: true
       mode: INPUT_PULLUP
 
   - platform: gpio
+    name: "Circulation Fan"
     id: call_fan_on
+    icon: mdi:fan
     pin:
       number: GPIO35
       inverted: true
-      mode: INPUT_PULLUP
 
   - platform: gpio
+    name: "Damper Open"
     id: damper_fully_opened_switch
     pin: 
       pcf8574: pcf8574_hub
@@ -135,6 +144,7 @@ binary_sensor:
         - switch.turn_off: damper_motor_open_switch
 
   - platform: gpio
+    name: "Damper Closed"
     id: damper_fully_closed_switch
     pin: 
       pcf8574: pcf8574_hub
@@ -166,6 +176,36 @@ sensor:
           - 0 -> 0
           - 0.78 -> 9.6
 
+
+  - platform: dht
+    pin: GPIO02
+    temperature:
+      id: fresh_air_temp
+      name: "Fresh Air"
+    humidity:
+      id: fresh_air_humidity
+      name: "Fresh Air "
+    update_interval: 60s
+
+  - platform: dht
+    pin: GPIO04
+    temperature:
+      id: inside_air_temp
+      name: "Inside Air"
+    humidity:
+      id: inside_air_humidity
+      name: "Inside Air "
+    update_interval: 60s
+
+  - platform: dht
+    pin: GPIO12
+    temperature:
+      id: conditioned_air_temp
+      name: "Conditioned Air"
+    humidity:
+      id: conditioned_air_humidity
+      name: "Conditioned Air "
+    update_interval: 60s
 
 
 

@@ -55,7 +55,8 @@ ethernet:
 
 # Enable logging
 logger:
-
+  level: INFO
+  
 # Enable Home Assistant API
 api:
 
@@ -101,20 +102,15 @@ binary_sensor:
     pin:
       number: 34
       inverted: True
-      mode: INPUT_PULLUP
 
-  - platform: template
+  - platform: analog_threshold
     id: garage_safety1
     name: "Garage Safety Beam (Single)"
     device_class: safety
-    lambda: |-
-      if (id(pluse_counter_safety1).state > 5000) {
-        return false;
-      } else {
-        // Unsafe; beam blocked or not working
-        return true;
-      }
-
+    threshold: 5000
+    sensor_id: pluse_counter_safety1
+    filters:
+      - invert:
       
   - platform: gpio
     id: garage_door1_state_up
@@ -122,7 +118,7 @@ binary_sensor:
     pin: 
       number: 35
       inverted: True
-      mode: INPUT_PULLUP
+#      mode: INPUT_PULLUP
 
     internal: true
 
@@ -136,17 +132,14 @@ binary_sensor:
     internal: true
 
 
-  - platform: template
+  - platform: analog_threshold
     id: garage_safety2
     name: "Garage Safety Beam (Twin)"
     device_class: safety
-    lambda: |-
-      if (id(pluse_counter_safety2).state > 5000) {
-        return false;
-      } else {
-        // Unsafe; beam blocked or not working
-        return true;
-      }
+    threshold: 5000
+    sensor_id: pluse_counter_safety2
+    filters:
+      - invert:
       
   - platform: gpio
     id: garage_door2_state_up
