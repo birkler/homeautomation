@@ -1,12 +1,13 @@
 # Garage monitor:
-# - Current Transformers (CT) to monitor dyer and washer
+# - Current Transformers (CT) to monitor dryer and washer
 # - Garage doors and gate (reed contacts)
 # - Interconnected Smoke Alarm monitoring and horn triggering
 #   Smoke alarms are hardwired with 120VAC and interconnected (with a red wire): 
 #   5VDC is put on the red wire to make all alarms sound the horn when alarms is triggered.
-#   The interconnect is monitored by a RM4 which closes a relay when alarm is sounded
+#   The interconnect is monitored by a FirstAlert RM4 which closes a relay when alarm is sounded
 #   Triggering the smoke alarms from the ESP32 is done by driving a BV0505sw1 galvanic isolated
 #   DC-DC converter with the output connected to Neutral and Red interconnect wire
+#   A MOSFET connected to a GPIO gives power to the DC-DC converter.
 # 
 #                                                     | () |  GND
 #           +-------------------+                     |    | 
@@ -39,10 +40,12 @@
 #                                                     | () | 
 #                                                     |    |
 #                                                     | () | 
-
+# DC-DC convert driver: RC network creates a delay and avoid trigger duruing startup/bootup
 #  [2N7000] 
 #     drain----> Alarm Horn Trigger
-#     gate----->smk_alrm_ic_drive (GPIO15) ---[100K]----->GND
+#     gate---+---------------------[10K]------>smk_alrm_ic_drive (GPIO15) 
+#            +----[10uF|----->GND
+#            |----[100K]----->GND
 #     source---> GND
 #
 # create one reference for each current transformer
@@ -50,13 +53,13 @@
 #
 #  3V3 ----[220]---+-----[220]-----GND
 #                  |
-#                  +-----|[-10u----GND
+#                  +-----[10uF]----GND
 #                  |
 #                  +-------------- CT2_REF  (1V6)
 #
 #  3V3 ----[100]---+-----[100]-----GND
 #                  |
-#                  +-----|[-10u----GND
+#                  +-----[10uF|----GND
 #                  |
 #                  +-------------- CT1_REF (1V6)
 #
@@ -77,7 +80,7 @@
 
 
 esphome:
-  name: garage_monitor
+  name: garage-monitor
   platform: ESP32
   board: esp32-poe-iso
 
@@ -88,7 +91,7 @@ ethernet:
   clk_mode: GPIO17_OUT
   phy_addr: 0
   power_pin: GPIO12
-
+  use_address: 192.168.1.205
 
 # Enable logging
 logger:
@@ -155,14 +158,14 @@ binary_sensor:
     name: "Garage Exterior Door"
     device_class: Door
     pin:
-      number: 5
+      number: 4
       mode: INPUT_PULLUP
 
   - platform: gpio
     name: "Garage Gate"
     device_class: Door
     pin:
-      number: 4
+      number: 5
       mode: INPUT_PULLUP
 
   - platform: gpio
@@ -214,12 +217,12 @@ binary_sensor:
 
 
   - platform: template
-    name: "Smoke Alarm"
+    name: "Smoke/CO Alarm"
     device_class: smoke
     #icon: mdi:fire
     lambda: |-
       if (id(smoke_alarm_interconnect_drive_delayed).state) {
-        //We cannot read interconnect_drivesense when we are forcing horn ON as it will read ON regardless if detectors detected any smoke
+        //We cannot read interconnect_drivesense when we are forcing horn ON as it will read ON regardless if detectors detected any Smoke/CO
       } else {
         id(global_smoke_co_triggered) = id(smoke_alarm_interconnect_sense).state > 0 ? 1 : 0;
       }
