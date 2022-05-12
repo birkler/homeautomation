@@ -80,7 +80,7 @@
 
 
 esphome:
-  name: garage-monitor
+  name: garage_monitor
   platform: ESP32
   board: esp32-poe-iso
 
@@ -91,7 +91,6 @@ ethernet:
   clk_mode: GPIO17_OUT
   phy_addr: 0
   power_pin: GPIO12
-  use_address: 192.168.1.205
 
 # Enable logging
 logger:

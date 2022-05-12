@@ -1,0 +1,180 @@
+# Garage monitor:
+# - Current Transformers (CT) to monitor dryer and washer
+# - Garage doors and gate (reed contacts)
+# - Interconnected Smoke Alarm monitoring and horn triggering
+#   Smoke alarms are hardwired with 120VAC and interconnected (with a red wire): 
+#   5VDC is put on the red wire to make all alarms sound the horn when alarms is triggered.
+#   The interconnect is monitored by a FirstAlert RM4 which closes a relay when alarm is sounded
+#   Triggering the smoke alarms from the ESP32 is done by driving a BV0505sw1 galvanic isolated
+#   DC-DC converter with the output connected to Neutral and Red interconnect wire
+#   A MOSFET connected to a GPIO gives power to the DC-DC converter.
+# 
+#                                                     | () |  GND
+#           +-------------------+                     |    | 
+#           |     ANTENNA       |                     | () |  REED1
+#           |                   |                     |    |
+#           |                   |                     | () |  REED2
+#           |                   |                     |    |
+#          o| 5V         GPI39  |o    Vsupp           | () |  REED3
+#     3V3 -o| 3V3        GPI36  |o    CT2             |    |
+#     GND -o| GND        GPI35  |o    CT1             | () |  CT1_REF
+#          o| ESP_EN     GPI34  |o    (Button1)       |    |
+# RESERVED o| GPIO0     GPIO33  |o                    | () |  CT2_REF
+# RESERVED o| GPIO1     GPIO32  |o                    |    |
+#          o| GPIO2     GPIO16  |o                    | () |  CT1
+#  REED1   o| GPIO3     GPIO15  |o  smk_alrm_ic_drive |    |
+#  REED2   o| GPIO4     GPIO14  |o  GPIO14            | () |  CT2
+#  REED3   o| GPIO5     GPIO13  |o  Alarm Sense       | -- |
+#           |                   |                     | () |  GND
+#           |                   |                     |    |
+#           |                   |                     | () |  GND
+#           |                   |                     |    |
+#           |    ETHERNET       |                     | () |  +5V
+#           +-------------------+                     |    |
+#                                                     | () | GPIO14
+#                                                     |    |
+#                                                     | () | Smoke Alarm Sense
+#                                                     |    |
+#                                                     | () | 'Alarm Horn Trigger'
+#                                                     |    |
+#                                                     | () | 
+#                                                     |    |
+#                                                     | () | 
+#
+# In junction box:
+# +---------+  B0505s Bottom View
+# | 1 2 3 4 |  1: GND (Blue)---> GND 2: Vin (Yellow) ---> 'Alarm Horn Trigger' 3: 0V (White) 4: 5V (RED)
+# |         |
+# +---------+
+#
+
+
+
+esphome:
+  name: water-monitor
+  platform: ESP32
+  board: esp32-poe
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+  use_address: 192.168.1.205
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+sensor:
+  - platform: adc
+    pin: 36
+    id: adc_sensor_raw_water_pressure
+    attenuation: 6dB
+    internal: True
+
+  - platform: pulse_counter
+    pin: 12
+
+    count_mode:
+      rising_edge: INCREMENT
+      falling_edge: INCREMENT
+    unit_of_measurement: 'Gal/min'
+    internal_filter: 12us
+    update_interval: 60s
+    name: 'Water Consumption'
+    device_class: gas
+    
+    filters:
+      - multiply: 1.0
+
+    total:
+      unit_of_measurement: 'Gal'
+      name: 'Water Consumption'
+      filters:
+        - multiply: 1.0 
+
+
+text_sensor:
+  - platform: version
+    name: "Version"
+
+binary_sensor:
+  - platform: status
+    name: "Garage Monitor"
+
+  - platform: gpio
+    id: water_main_valve_is_fully_open
+    device_class: Door
+    pin:
+      number: 4
+      mode: INPUT_PULLUP
+
+  - platform: gpio
+    id: water_main_valve_is_fully_closed
+    device_class: Door
+    pin:
+      number: 5
+      mode: INPUT_PULLUP
+
+
+globals:
+  - id: global_water_total_gallons
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+switch:
+
+  - platform: gpio
+    id: water_main_valve_open
+    name: Water Main Valve Open
+    icon: mdi:bullhorn
+    internal: false
+    pin: 15
+    inverted: false
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - delay: 20s
+      - switch.turn_off: water_main_valve_open
+
+  - platform: gpio
+    id: water_main_valve_close
+    name: Water Main Valve Close
+    icon: mdi:bullhorn
+    internal: false
+    pin: 15
+    inverted: false
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - delay: 20s
+      - switch.turn_off: water_main_valve_close
+
+
+
+cover:
+  - platform: endstop
+    name: "Water Main Valve"
+    device_class: damper
+    icon: mdi:valve
+
+    open_action:
+      - switch.turn_on: water_main_valve_open
+    open_duration: 30s
+    open_endstop: water_main_valve_is_fully_open
+
+    close_action:
+      - switch.turn_on: water_main_valve_close
+    close_duration: 30s
+    close_endstop: water_main_valve_is_fully_closed
+
+    stop_action:
+      - switch.turn_off: water_main_valve_open
+      - switch.turn_off: water_main_valve_close
