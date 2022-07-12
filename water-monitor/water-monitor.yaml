@@ -1,13 +1,7 @@
-# Garage monitor:
-# - Current Transformers (CT) to monitor dryer and washer
-# - Garage doors and gate (reed contacts)
-# - Interconnected Smoke Alarm monitoring and horn triggering
-#   Smoke alarms are hardwired with 120VAC and interconnected (with a red wire): 
-#   5VDC is put on the red wire to make all alarms sound the horn when alarms is triggered.
-#   The interconnect is monitored by a FirstAlert RM4 which closes a relay when alarm is sounded
-#   Triggering the smoke alarms from the ESP32 is done by driving a BV0505sw1 galvanic isolated
-#   DC-DC converter with the output connected to Neutral and Red interconnect wire
-#   A MOSFET connected to a GPIO gives power to the DC-DC converter.
+# Water monitor:
+# - Water consumption - pulse output
+# - Pressure sensor (analog output)
+# - Electronically controllable valve (9VDC)
 # 
 #                                                     | () |  GND
 #           +-------------------+                     |    | 
@@ -41,11 +35,20 @@
 #                                                     |    |
 #                                                     | () | 
 #
-# In junction box:
+# 5V step up
 # +---------+  B0505s Bottom View
-# | 1 2 3 4 |  1: GND (Blue)---> GND 2: Vin (Yellow) ---> 'Alarm Horn Trigger' 3: 0V (White) 4: 5V (RED)
-# |         |
-# +---------+
+# | 1 2 3 4 |  1: GND () ---> GND 
+# |         |  2: Vin () ---> 5V 
+# +---------+  3: 0V  () ---> 5V
+#              4: 5V  () ---> 10V   
+#
+#
+#  +10V --------
+#                 /------ 
+#  GND ----------
+#
+#
+#
 #
 
 
@@ -62,7 +65,6 @@ ethernet:
   clk_mode: GPIO17_OUT
   phy_addr: 0
   power_pin: GPIO12
-  use_address: 192.168.1.205
 
 # Enable logging
 logger:
@@ -73,70 +75,368 @@ api:
 ota:
 
 
+globals:
+  - id: global_water_household_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: global_water_softener_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: global_water_carbon_filter_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: global_water_sediment_filter_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: global_water_irrigation_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: global_water_pool_fill_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: global_small_water_leak_last_usage
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+  - id: global_washer_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+  - id: global_dishwasher_volume
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+  - id: global_water_irrigation_is_on
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: global_water_pool_fill_is_on
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: global_water_washer_is_on
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: global_water_dishwasher_is_on
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+
 sensor:
   - platform: adc
-    pin: 36
+    pin: 35
     id: adc_sensor_raw_water_pressure
+    unit_of_measurement: 'psi'
+    name: "Water Pressure"
     attenuation: 6dB
-    internal: True
+    internal: False
+    update_interval: 2s
+
+    device_class: pressure
+    filters:
+      - calibrate_linear:
+          - 0.25 -> 0.0
+          - 2.25 -> 100.0
 
   - platform: pulse_counter
-    pin: 12
-
+    pin: 36
     count_mode:
       rising_edge: INCREMENT
       falling_edge: INCREMENT
     unit_of_measurement: 'Gal/min'
     internal_filter: 12us
-    update_interval: 60s
-    name: 'Water Consumption'
+    update_interval: 5s
+    name: 'Water Flow'
     device_class: gas
     
     filters:
-      - multiply: 1.0
+      - multiply: 0.5
 
     total:
-      unit_of_measurement: 'Gal'
+      unit_of_measurement: 'gal'
+      id: water_consumption
       name: 'Water Consumption'
+      device_class: gas
       filters:
-        - multiply: 1.0 
+        - multiply: 0.5
+
+  - platform: template
+    id: water_carbon_filter_lifespan
+    name: Water Carbon Filter
+    device_class: battery
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    lambda: |-
+      const double life_volume = 600000;
+      return 100.0*std::max(0.0,life_volume - id(global_water_carbon_filter_volume)) / life_volume;
+
+  - platform: template
+    id: water_sediment_filter_lifespan
+    name: Water Sediment Filter
+    device_class: battery
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    lambda: |-
+      const double life_volume = 100000;
+      return 100.0*std::max(0.0,life_volume - id(global_water_sediment_filter_volume)) / life_volume;
+
+
+  - platform: template
+    id: water_softener_filter_lifespan
+    name: Water Softener
+    device_class: battery
+    unit_of_measurement: '%'
+    accuracy_decimals: 0
+    lambda: |-
+      const double life_volume = 1000000;
+      return 100.0*std::max(0.0,life_volume - id(global_water_softener_volume)) / life_volume;
+
+
+
+  - platform: template
+    id: water_irrigation_volume
+    name: Water Irrigation Volume
+    device_class: gas
+    icon: mdi:watering-can-outline
+    unit_of_measurement: 'gal'
+    lambda: |-
+      return id(global_water_irrigation_volume);
+
+  - platform: template
+    id: water_pool_fill_volume
+    name: Water Pool Fill Volume
+    device_class: gas
+    icon: mdi:waves-arrow-up
+    unit_of_measurement: 'gal'
+    lambda: |-
+      return id(global_water_pool_fill_volume);
+
+  - platform: template
+    id: water_washer_volume
+    name: Water WasherVolume
+    device_class: gas
+    icon: mdi:washing-machine
+    unit_of_measurement: 'gal'
+    lambda: |-
+      return id(global_washer_volume);
+
+  - platform: template
+    id: water_dishwasher_volume
+    name: Water Dishwasher Volume
+    device_class: gas
+    icon: mdi:dishwasher
+    unit_of_measurement: 'gal'
+    lambda: |-
+      return id(global_dishwasher_volume);
+
+
+
+  - platform: template
+    id: water_household_volume
+    name: Water Household Volume
+    device_class: gas
+    icon: mdi:shower
+    unit_of_measurement: 'gal'
+    lambda: |-
+      return id(global_water_household_volume);
+
+display:
+  - platform: lcd_gpio
+    dimensions: 16x2
+    data_pins:
+      - GPIO15
+      - GPIO16
+      - GPIO32
+      - GPIO33
+    enable_pin: GPIO14
+    rs_pin: GPIO13
+    lambda: |-
+
+      std::string text_waterinfo = id(water_info).state;
+      it.printf(0,0,"%20s",text_waterinfo.c_str());
 
 
 text_sensor:
   - platform: version
     name: "Version"
 
+  - platform: template
+    id: water_info
+    name: "Water Info"
+    icon: mdi:water-drop
+    entity_category: diagnostic
+    lambda: |-
+      static std::string prev = "";
+      std::string res;
+      res.resize(256,' ');
+      int len = sprintf((char *)res.data(),"%.0f psi %d gal",
+        id(adc_sensor_raw_water_pressure).state,
+        id(global_water_household_volume));
+
+      res.resize(len);
+
+      bool same = prev.compare(res) == 0;
+      prev = res;
+      
+      if (same) {
+        return {};
+      } else {
+        return res;
+      }
+    update_interval: 250ms
+
+
 binary_sensor:
+
+  - platform: gpio
+    id: water_pulse
+    pin: GPIO36
+    internal: true
+    filters:
+       - delayed_on_off: 50ms
+       - lambda: |-
+          if (id(global_water_irrigation_is_on)) {
+            id(global_water_irrigation_volume) += x;
+
+          } else if (id(global_water_pool_fill_is_on)) {
+            id(global_water_pool_fill_volume) += x;
+          } else if (id(global_water_washer_is_on)) {
+            id(global_washer_volume) += x;
+          } else if (id(global_water_dishwasher_is_on)) {
+            id(global_dishwasher_volume) += x;
+            
+          } else {
+            id(global_water_household_volume) += x;
+            id(global_water_softener_volume) += x;
+            id(global_water_carbon_filter_volume) += x;
+            id(global_water_sediment_filter_volume) += x;
+          }
+          return x;
+
   - platform: status
-    name: "Garage Monitor"
+    name: "Water Monitor"
 
   - platform: gpio
     id: water_main_valve_is_fully_open
     device_class: Door
     pin:
-      number: 4
+      number: 2
       mode: INPUT_PULLUP
 
   - platform: gpio
     id: water_main_valve_is_fully_closed
     device_class: Door
     pin:
-      number: 5
+      number: 3
       mode: INPUT_PULLUP
 
+  - platform: template
+    id: water_small_leak
+    device_class: problem
+    lambda: |-
+      if (id(water_main_valve_is_fully_open).state) {
+        return true;
+      } else {
+        return false;
+      }
 
-globals:
-  - id: global_water_total_gallons
-    type: int
-    restore_value: yes
-    initial_value: '0'
+
+
 
 switch:
+  - platform: template
+    id: water_irrigation_is_on
+    name: Water Irrigation Is On
+    icon: mdi:watering-can
+    entity_category: diagnostic
+    lambda: |-
+      return id(global_water_irrigation_is_on) > 0;
+    turn_on_action:
+      then: 
+      - lambda: "id(global_water_irrigation_is_on) = 1;"
+      - delay: 2h
+      - switch.turn_off: water_irrigation_is_on
+
+    turn_off_action:
+      - lambda: |-
+          id(global_water_irrigation_is_on) = 0;
+
+
+  - platform: template
+    id: water_pool_fill_is_on
+    name: Water Pool Fill Is On
+    icon: mdi:waves-arrow-up
+    entity_category: diagnostic
+
+    lambda: |-
+       return id(global_water_pool_fill_is_on) > 0;
+    turn_on_action:
+      then: 
+      - lambda: "id(global_water_pool_fill_is_on) = 1;"
+      - delay: 2h
+      - switch.turn_off: water_pool_fill_is_on
+
+    turn_off_action:
+      - lambda: |-
+          id(global_water_pool_fill_is_on) = 0;
+
+
+  - platform: template
+    id: water_washer_is_on
+    name: Water Washer Is On
+    icon: mdi:washing-machine
+    entity_category: diagnostic
+
+    lambda: |-
+      return id(global_water_washer_is_on) > 0;
+    turn_on_action:
+      then: 
+      - lambda: "id(global_water_washer_is_on) = 1;"
+      - delay: 2h
+      - switch.turn_off: water_washer_is_on
+
+    turn_off_action:
+      - lambda: |-
+          id(global_water_washer_is_on) = 0;
+
+  - platform: template
+    id: water_dishwasher_is_on
+    name: Water Dishwasher Is On
+    icon: mdi:dishwasher
+    entity_category: diagnostic
+
+    lambda: |-
+      return id(global_water_dishwasher_is_on) > 0;
+    turn_on_action:
+      then: 
+      - lambda: "id(global_water_dishwasher_is_on) = 1;"
+      - delay: 2h
+      - switch.turn_off: water_dishwasher_is_on
+
+    turn_off_action:
+      - lambda: |-
+          id(global_water_dishwasher_is_on) = 0;
+
+
+
 
   - platform: gpio
     id: water_main_valve_open
     name: Water Main Valve Open
-    icon: mdi:bullhorn
+    icon: mdi:valve
+    entity_category: diagnostic
+
     internal: false
     pin: 15
     inverted: false
@@ -148,7 +448,9 @@ switch:
   - platform: gpio
     id: water_main_valve_close
     name: Water Main Valve Close
-    icon: mdi:bullhorn
+    entity_category: diagnostic
+
+    icon: mdi:valve
     internal: false
     pin: 15
     inverted: false
@@ -178,3 +480,33 @@ cover:
     stop_action:
       - switch.turn_off: water_main_valve_open
       - switch.turn_off: water_main_valve_close
+
+
+# Example configuration entry
+button:
+  - platform: template
+    id: water_reset_sediment_filter_volume
+    name: "Reset Sediment Filter Volume"
+    entity_category: diagnostic
+    on_press:
+      - globals.set:
+          id: global_water_sediment_filter_volume
+          value: '0'
+
+  - platform: template
+    id: water_reset_carbon_filter_volume
+    name: "Reset Carbon Filter Volume"
+    entity_category: diagnostic
+    on_press:
+      - globals.set:
+          id: global_water_carbon_filter_volume
+          value: '0'
+
+  - platform: template
+    id: water_reset_softener_volume
+    name: "Reset Softener Volume"
+    entity_category: diagnostic
+    on_press:
+      - globals.set:
+          id: global_water_softener_volume
+          value: '0'

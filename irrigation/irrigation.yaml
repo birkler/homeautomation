@@ -49,7 +49,6 @@ ethernet:
   phy_addr: 0
   power_pin: GPIO12
 
-
 # Enable logging
 logger:
   level: DEBUG
@@ -578,6 +577,25 @@ binary_sensor:
   - platform: status
     name: "Irrigation Controller"
 
+  - platform: template
+    id: irrigation_is_on
+    name: "Irrigation Is On"
+    icon: mdi:watering-can
+    entity_category: diagnostic
+
+    lambda: |-
+      if (id(relay_valve_zone1).state > 0 ||
+          id(relay_valve_zone2).state > 0 ||
+          id(relay_valve_zone3).state > 0 ||
+          id(relay_valve_zone4).state > 0 ||
+          id(relay_valve_zone5).state > 0 ||
+          id(relay_valve_zone6).state > 0) 
+      {
+        return true;
+      } else {
+        return false;
+      }
+
 
 switch:
   - platform: template
@@ -739,11 +757,7 @@ switch:
     name: "Monday"
     icon: mdi:calendar-week
     lambda: |-
-      if (id(global_monday_active) > 0) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(global_monday_active) > 0;
     turn_on_action:
       - lambda: |-
           id(global_monday_active) = 1;
@@ -757,11 +771,7 @@ switch:
     name: "Tuesday"
     icon: mdi:calendar-week
     lambda: |-
-      if (id(global_tuesday_active) > 0) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(global_tuesday_active) > 0;
     turn_on_action:
       - lambda: |-
           id(global_tuesday_active) = 1;
@@ -775,11 +785,7 @@ switch:
     name: "Wednesday"
     icon: mdi:calendar-week
     lambda: |-
-      if (id(global_wednesday_active) > 0) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(global_wednesday_active) > 0;
     turn_on_action:
       - lambda: |-
           id(global_wednesday_active) = 1;
@@ -792,11 +798,7 @@ switch:
     name: "Thursday"
     icon: mdi:calendar-week
     lambda: |-
-      if (id(global_thursday_active) > 0) {
-        return true;
-      } else {
-        return false;
-      }
+      return id(global_thursday_active) > 0;
     turn_on_action:
       - lambda: |-
           id(global_thursday_active) = 1;

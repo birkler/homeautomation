@@ -62,6 +62,9 @@ api:
 
 ota:
 
+text_sensor:
+  - platform: version
+    name: "Version"
 
 switch:
   - platform: gpio
