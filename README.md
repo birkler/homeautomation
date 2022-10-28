@@ -23,38 +23,44 @@ duckdns.org
 ### Device Tree
 ```
 - HomeAssistant (RaspberryPI)
-    - GPIO
-        - Motion (Office) (PIR): 
-            GND (black),+5V (red),
-            Motion (Yellow) GPIO17, 
-            Tamper (Green)  GPIO18
+    - USB
+        - ZWave (Zoos USB)
+            - Honeywell Thermostat
+                - Inside Temperature
+                - Inside Humidity
+                - Inside Set Temp
+            - Lights x10
+            - Lights dimmable x25
+            - Motion Sensor with Temp
+                - Drive Way Motion
+            - Lights with occupancy sensor
+                - Motion Hallway
+                - Motion Garage
+                - Motion Bath
+                - Motion Guest Bath
+                - Motion Master Bath
 
-    - ZWave (Zoos USB)
-        - Honeywell Thermostat
-            - Inside Temperature
-            - Inside Humidity
-            - Inside Set Temp
-        - Lights
-        - Lights dimmable
-        - Lights with occupancy sensor
-            - Occupancy Hallway
-            - Occupancy Garage
-            - Occupancy Guest Bath
-            - Occupancy Master Bath
-
-        - Motion Sensor with Temp
-            - Drive Way Motion
-
+        - Uninteruptible Power Supply
+            - Line voltage
+            - Run time
+            - Load %
 
     - ETHERNET
         - Self - Raspbery Pi 4 (POE) [192.168.1.52]
         - Unifi Gateway+24Port POE switch
-        - WIFI
+        - WIFI UniFi
             - Amazon ECHO
             - Amazon Ring Doorbell
             - ChromeCasts
             - Mobile Devices (HomeAssistant)
             - Roomba [192.168.1.61]
+            - Wall Dashboard: FireTable 10HD + Kiosk Mode
+                - Camera sensor
+                - Motion Detector
+                - Luminance Sensor
+            - Jura Coffee Controller (does not work)
+                
+
         - ESPHome Garage Doors  (POE)
             - Cover Twin
                 - Sensor Closed Reed Switch 
@@ -84,6 +90,11 @@ duckdns.org
             - Smoke Alarm Signal (input)
             - Smoke Alarm Siren Trigger (output)
 
+        - ESPHome Irrigation Controller
+            - 6x Zones 24VAC relay output
+            - Week Schedule with customisible duration per zone
+
+
         - Pentair Pool Ethenet gateway  (POE) [192.168.1.22]
             - ZigBee
                 - Pentair Pool controller
@@ -94,7 +105,8 @@ duckdns.org
                     - Switch Waterfall
                     - Switch Jets
                     - SPA Thermostat
-                    - (Pool Thermostat)
+                    - Pool Thermostat
+                    - Pool Fill Valve
 
         - Rainforest Energy Gateway (POE)  [192.168.1.59]
             - Zigbee
@@ -106,8 +118,9 @@ duckdns.org
                 - SolarEdge Inverter
         - SolarEdge Inverter Modbus [192.168.1.60]
             - kW,A,Vac,Vdc, ...
-        - TV Sony OLED 
-        - SoundBar
+        - TV Sony OLED 65"
+        - TV Sony OLED 77"
+
 
         
 ``` 
@@ -115,13 +128,8 @@ duckdns.org
 
 Planning Future
 - Gas Ulitity Meter
-- Water Meter
-- Water Temperature
-- Water Pressure
 - Range Current Sensor
 - PIR sensor kitchen
 - Outside Cameras
-- Interface to Smoke Detectors
-- Irrigation
 
 

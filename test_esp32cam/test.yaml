@@ -1,0 +1,103 @@
+
+substitutions:
+  devicename: test-esp32cam
+  friendly_name: Test Bed
+  device_description: Boo!
+
+esphome:
+  name: $devicename
+  comment: ${device_description}
+  platform: ESP32
+  board: esp32cam
+
+
+wifi:
+  ssid: "bwlan-q"
+  password: "lianabirkler"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Coffee Jura J6 Fallback Hotspot"
+    password: "R4FTYe2bg5aB"
+
+captive_portal:
+
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+status_led:
+  pin: GPIO33
+
+
+# ESP32-CAM
+esp32_camera:
+  external_clock:
+    pin: GPIO0
+    frequency: 20MHz
+  i2c_pins:
+    sda: GPIO26
+    scl: GPIO27
+  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
+  vsync_pin: GPIO25
+  href_pin: GPIO23
+  pixel_clock_pin: GPIO22
+  power_down_pin: GPIO32
+
+  name: Mobile
+  resolution: 640x480
+  jpeg_quality: 25
+
+  # ... Frame Settings
+
+# Flashlight
+output:
+  - platform: gpio
+    pin: GPIO4
+    id: gpio_4
+light:
+  - platform: binary
+    output: gpio_4
+    name: Flash light
+
+
+time:
+  - platform: homeassistant
+    id: global_time
+
+
+#enable logging but disable on UART
+logger:
+  level: VERBOSE
+
+# Enable Home Assistant API & OTA Updates
+
+uart:
+  tx_pin: GPIO13
+  rx_pin: GPIO12
+  baud_rate: 9600
+  id: uart_bus
+
+# UART bytes below have been generated with generate_esphome_jura_yaml.py
+# Tested with a Jura Impressa J6
+
+sensor:
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+
+  - platform: wifi_signal
+    name: "${friendly_name} WiFi Signal"
+    update_interval: 60s
+
+text_sensor:
+  - platform: version
+    name: "${friendly_name} ESPHome version"
+    
+
+binary_sensor:
+  - platform: status
+    name: "${friendly_name} Status"
+
