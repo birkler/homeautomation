@@ -58,6 +58,8 @@ esphome:
   platform: ESP32
   board: esp32-poe
 
+bluetooth_proxy:
+
 ethernet:
   type: LAN8720
   mdc_pin: GPIO23
@@ -142,7 +144,7 @@ sensor:
     attenuation: 6dB
     internal: False
     update_interval: 2s
-
+    accuracy_decimals: 1
     device_class: pressure
     filters:
       - calibrate_linear:
@@ -154,20 +156,22 @@ sensor:
     count_mode:
       rising_edge: INCREMENT
       falling_edge: INCREMENT
-    unit_of_measurement: 'Gal/min'
+    unit_of_measurement: 'gal/min'
     internal_filter: 12us
     update_interval: 5s
     name: 'Water Flow'
-    device_class: gas
+    device_class: water
     
     filters:
-      - multiply: 0.5
+      - multiply: 6.0 #Because we sample every 5s
+      - multiply: 0.5 #becuase we get sample both on rising and falling edge
 
     total:
-      unit_of_measurement: 'gal'
       id: water_consumption
       name: 'Water Consumption'
-      device_class: gas
+      device_class: water
+      state_class: total_increasing
+      unit_of_measurement: 'gal'
       filters:
         - multiply: 0.5
 
@@ -199,7 +203,7 @@ sensor:
     unit_of_measurement: '%'
     accuracy_decimals: 0
     lambda: |-
-      const double life_volume = 1000000;
+      const double life_volume = 100000000;
       return 100.0*std::max(0.0,life_volume - id(global_water_softener_volume)) / life_volume;
 
 
@@ -207,36 +211,45 @@ sensor:
   - platform: template
     id: water_irrigation_volume
     name: Water Irrigation Volume
-    device_class: gas
+    device_class: water
+    state_class: total_increasing
     icon: mdi:watering-can-outline
     unit_of_measurement: 'gal'
+    accuracy_decimals: 1
     lambda: |-
       return id(global_water_irrigation_volume);
 
   - platform: template
     id: water_pool_fill_volume
     name: Water Pool Fill Volume
-    device_class: gas
+    device_class: water
+    state_class: total_increasing
     icon: mdi:waves-arrow-up
     unit_of_measurement: 'gal'
+    accuracy_decimals: 1
+
     lambda: |-
       return id(global_water_pool_fill_volume);
 
   - platform: template
     id: water_washer_volume
-    name: Water WasherVolume
-    device_class: gas
+    name: Water Washer Volume
+    device_class: water
+    state_class: total_increasing
     icon: mdi:washing-machine
     unit_of_measurement: 'gal'
+    accuracy_decimals: 1
     lambda: |-
       return id(global_washer_volume);
 
   - platform: template
     id: water_dishwasher_volume
     name: Water Dishwasher Volume
-    device_class: gas
+    device_class: water
+    state_class: total_increasing
     icon: mdi:dishwasher
     unit_of_measurement: 'gal'
+    accuracy_decimals: 1
     lambda: |-
       return id(global_dishwasher_volume);
 
@@ -245,9 +258,11 @@ sensor:
   - platform: template
     id: water_household_volume
     name: Water Household Volume
-    device_class: gas
+    device_class: water
+    state_class: total_increasing
     icon: mdi:shower
     unit_of_measurement: 'gal'
+    accuracy_decimals: 1
     lambda: |-
       return id(global_water_household_volume);
 
@@ -267,9 +282,138 @@ display:
       it.printf(0,0,"%20s",text_waterinfo.c_str());
 
 
+number:
+  - platform: template
+    id: water_household_volume_input
+    name: Household Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_water_household_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+    set_action:
+      lambda: !lambda |-
+          id(global_water_household_volume) = x;
+
+  - platform: template
+    id: water_softener_volume_input
+    name: Softener Volume
+    min_value: 0
+    max_value: 100000000
+    unit_of_measurement: 'gal'
+    step: 0
+    lambda: |-
+      return id(global_water_softener_volume);
+    entity_category: diagnostic
+    set_action:
+      lambda: !lambda |-
+          id(global_water_softener_volume) = x;
+
+
+  - platform: template
+    id: water_carbon_filter_volume_input
+    name: Carbon Filter Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_water_carbon_filter_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+
+    set_action:
+      lambda: !lambda |-
+          id(global_water_carbon_filter_volume) = x;
+
+
+  - platform: template
+    id: water_sediment_filter_volume_input
+    name: Sediment Filter Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_water_sediment_filter_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+    set_action:
+      lambda: !lambda |-
+          id(global_water_sediment_filter_volume) = x;
+
+  - platform: template
+    id: water_irrigation_volume_input
+    name: Water Irrigation Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_water_irrigation_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+    set_action:
+      lambda: !lambda |-
+          id(global_water_irrigation_volume) = x;
+
+  - platform: template
+    id: water_pool_fill_volume_input
+    name: Pool Fill Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_water_pool_fill_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+    set_action:
+      lambda: !lambda |-
+          id(global_water_pool_fill_volume) = x;
+
+
+
+  - platform: template
+    id: washer_volume_input
+    name: Washer Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_washer_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+    set_action:
+      lambda: !lambda |-
+          id(global_washer_volume) = x;
+
+
+  - platform: template
+    id: dishwasher_volume_input
+    name: Dishwasher Volume
+    min_value: 0
+    max_value: 100000000
+    step: 0
+    lambda: |-
+      return id(global_dishwasher_volume);
+    entity_category: diagnostic
+    unit_of_measurement: 'gal'
+    set_action:
+      lambda: !lambda |-
+          id(global_dishwasher_volume) = x;
+
+
+
+
 text_sensor:
   - platform: version
     name: "Version"
+    entity_category: diagnostic
+
+
+  - platform: ethernet_info
+    ip_address:
+      name: ESP IP Address
+    #entity_category: diagnostic
 
   - platform: template
     id: water_info
@@ -306,18 +450,25 @@ binary_sensor:
     filters:
        - delayed_on_off: 50ms
        - lambda: |-
-          if (id(global_water_irrigation_is_on)) {
-            id(global_water_irrigation_volume) += x;
+          int contributors = 0;
+          if (id(global_water_irrigation_is_on)) contributors++;
+          if (id(global_water_pool_fill_is_on)) contributors++;
+          if (id(global_water_washer_is_on)) contributors++;
+          if (id(global_water_dishwasher_is_on)) contributors++;
 
-          } else if (id(global_water_pool_fill_is_on)) {
-            id(global_water_pool_fill_volume) += x;
-          } else if (id(global_water_washer_is_on)) {
-            id(global_washer_volume) += x;
-          } else if (id(global_water_dishwasher_is_on)) {
-            id(global_dishwasher_volume) += x;
-            
+          float contribution = x;
+          if (contributors > 0) {
+            contribution *= 1.0 / (float)contributors;
+            if (id(global_water_irrigation_is_on)) id(global_water_irrigation_volume) += contribution;
+            if (id(global_water_pool_fill_is_on))  id(global_water_pool_fill_volume) += contribution;
+            if (id(global_water_washer_is_on))     id(global_washer_volume) += contribution;
+            if (id(global_water_dishwasher_is_on)) id(global_dishwasher_volume) += contribution;
           } else {
-            id(global_water_household_volume) += x;
+            id(global_water_household_volume) += contribution;
+          }
+
+          if (id(global_water_irrigation_is_on) || id(global_water_pool_fill_is_on))  {
+          } else {
             id(global_water_softener_volume) += x;
             id(global_water_carbon_filter_volume) += x;
             id(global_water_sediment_filter_volume) += x;
@@ -484,6 +635,10 @@ cover:
 
 # Example configuration entry
 button:
+  - platform: restart
+    name: "Restart"
+    entity_category: diagnostic
+
   - platform: template
     id: water_reset_sediment_filter_volume
     name: "Reset Sediment Filter Volume"
